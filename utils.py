@@ -3,7 +3,7 @@ import numpy as np
 from scipy.stats import unitary_group
 
 
-def Hadammard_layer(wires):
+def hadamard_layer(wires):
     for i in wires:
         qml.Hadamard(i)
 
@@ -83,7 +83,7 @@ def create_mean_std(mean, std, num_samples):
 
 
 #create dataset of size <size> with a mean schmidt rank
-def uniform_random_data_mean_(mean, std, num_samples,size, x_qbits, r_qbits):
+def uniform_random_data_mean(mean, std, num_samples,size, x_qbits, r_qbits):
     data = []
     numbers_mean_std= create_mean_std(mean,std, num_samples)
     for i in range(len(numbers_mean_std)):
@@ -149,7 +149,7 @@ def test_unitary():
     def circuit():
         unitary_circuit(unitary)(wires=range(3))
 
-        return [qml.expval(qml.PauliZ(m)) for m in range(3)]
+        return [qml.expval(qml.PauliZ((m,))) for m in range(3)]
 
     print(qml.draw(circuit)())
 
