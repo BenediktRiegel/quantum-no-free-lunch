@@ -18,18 +18,32 @@ def int_to_bin(num, num_bits):
     return [0 for _ in range(num_bits - len(b))] + [int(el) for el in b]
 
 
+def one_hot_encoding(num, num_bits):
+    result = [0]*num_bits
+    result[num] = 1
+    return result
+
+
 def uniformly_sample_from_base(num_qbits, size):
     #uniform sampling of basis vectors
+    num_bits = np.power(2, num_qbits)
     base = []
-    random_ints = np.random.choice(np.power(2, num_qbits), size, replace=False)
+    random_ints = np.random.choice(num_bits, size, replace=False)
     for rd_int in range(len(random_ints)):
-        binary_base = int_to_bin(random_ints[rd_int], num_qbits)
+        binary_base = one_hot_encoding(random_ints[rd_int], num_bits)
         base.append(binary_base)
-    return base
+    return np.array(base)
 
 
 def normalize(point):
     return point / np.linalg.norm(point)
+
+
+def tensor_product(state1: np.ndarray, state2: np.ndarray):
+    result = np.zeros(len(state1)*len(state2))
+    for i in range(len(state1)):
+        result[i*len(state1):i*len(state1)+len(state1)] = state1[i] * state2
+    return result
 
 
 # Return a randomly uniformly sampled point with schmidt rank <schmid_rank> and size x_qbits+r_qbits
@@ -37,10 +51,11 @@ def uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits):
     basis_x = uniformly_sample_from_base(x_qbits, schmidt_rank)
     basis_r = uniformly_sample_from_base(r_qbits, schmidt_rank)
     coeff = np.random.uniform(size=schmidt_rank)
-    point = np.zeros((x_qbits + r_qbits))
+    point = np.zeros((2**x_qbits * 2**r_qbits))
     for i in range(schmidt_rank):
-        point += coeff[i] * np.array(basis_x[i] + basis_r[i])
+        point += coeff[i] * tensor_product(basis_x[i], basis_r[i])
     return normalize(point)
+
 
 #create dataset of size <size> with a given schmidt rank
 def uniform_random_data(schmidt_rank, size, x_qbits, r_qbits):
@@ -93,7 +108,7 @@ def uniform_random_data_mean(mean, std, num_samples,size, x_qbits, r_qbits):
 
 
 def random_unitary_matrix(x_qbits):
-    matrix = unitary_group.rvs(x_qbits)
+    matrix = unitary_group.rvs(2**x_qbits)
     return matrix
 
 #testing purposes of Schimdt rank
@@ -140,6 +155,21 @@ def unitary_circuit(unitary):
     return qml.from_qiskit(qc_transpiled)
 
 
+def adjoint_unitary_circuit(unitary):
+    from qiskit import QuantumCircuit, Aer, transpile
+
+    unitary = np.conj(np.array(unitary)).T
+
+    qbits = int(np.log2(len(unitary)))
+    sv_backend = Aer.get_backend('statevector_simulator')
+
+    qc = QuantumCircuit(qbits)
+    qc.unitary(unitary, range(qbits))
+    qc_transpiled = transpile(qc, backend=sv_backend, basis_gates=sv_backend.configuration().basis_gates,
+                              optimization_level=3)
+    return qml.from_qiskit(qc_transpiled)
+
+
 def test_unitary():
     dev = qml.device('default.qubit', wires=[3])
 
@@ -154,6 +184,20 @@ def test_unitary():
     print(qml.draw(circuit)())
 
 
+def test_sample_point():
+    for i in range(10):
+        print(uniformly_sample_from_base(2, 4))
+
+def quantum_risk(U, V): # <- signatur eventuell anpassen
+    dim = len(U)
+    U = np.matrix(U)
+    V = np.matrix(V)
+    prod = np.matmul(U.getH(), V)
+    tr = abs(np.trace(prod))**2
+    risk = 1 - ((dim + tr)/(dim * (dim+1)))
+    
+    return risk
+
 if __name__ == '__main__':
-    test_unitary()
+    test_sample_point()
     # create_mean_std(10, 4, 100)
