@@ -4,6 +4,7 @@ This package uses Pennylane.
 
 
 To do:
-averageing over different training sets
-inverse vs addjungierte
-risk function correct
+-averageing over different training sets
+-inverse vs addjungierte
+-risk function correct
+- 1000 shots for cost function measure
