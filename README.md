@@ -8,6 +8,7 @@ To do:
 - inverse vs addjungierte
 - risk function correct
 - 1000 shots for cost function measure
+- number of referenz qbits in Fig.3 anpassen/optimieren
 
 
 
