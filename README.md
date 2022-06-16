@@ -13,3 +13,4 @@ To do:
 
 #Experiments
 - plot Fig.2 und Fig.3
+- Fig.2  10 unitaries and 10 training sets and entangles/unentangled
