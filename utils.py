@@ -25,7 +25,7 @@ def one_hot_encoding(num, num_bits):
 
 
 def uniformly_sample_from_base(num_qbits, size):
-    #uniform sampling of basis vectors
+    # uniform sampling of basis vectors
     num_bits = np.power(2, num_qbits)
     base = []
     random_ints = np.random.choice(num_bits, size, replace=False)
@@ -42,7 +42,7 @@ def normalize(point):
 def tensor_product(state1: np.ndarray, state2: np.ndarray):
     result = np.zeros(len(state1)*len(state2))
     for i in range(len(state1)):
-        result[i*len(state1):i*len(state1)+len(state1)] = state1[i] * state2
+        result[i*len(state2):i*len(state2)+len(state2)] = state1[i] * state2
     return result
 
 
@@ -57,17 +57,16 @@ def uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits):
     return normalize(point)
 
 
-#create dataset of size <size> with a given schmidt rank
+# create dataset of size <size> with a given schmidt rank
 def uniform_random_data(schmidt_rank, size, x_qbits, r_qbits):
     data = []
-    #size = number data samples of trainset
+    # size = number data samples of trainset
     for i in range(size):
         data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits))
     return data
 
 
-
-#helper function to generate random samples of a certain mean value
+# helper function to generate random samples of a certain mean value
 # params: mean of generate numbers with standard deviation of certain value
 #         number of samples to generate
 def create_mean_std(mean, std, num_samples):
@@ -92,7 +91,6 @@ def create_mean_std(mean, std, num_samples):
     final_mean = np.mean(final_samples)
     final_std = np.std(final_samples)
     print("Final samples stats     : mean = {:.4f} stdv = {:.4f}".format(final_mean, final_std))
-
 
     return final_samples
 
@@ -184,10 +182,6 @@ def test_unitary():
     print(qml.draw(circuit)())
 
 
-def test_sample_point():
-    for i in range(10):
-        print(uniformly_sample_from_base(2, 4))
-
 def quantum_risk(U, V): # <- signatur eventuell anpassen
     dim = len(U)
     U = np.matrix(U)
@@ -198,6 +192,11 @@ def quantum_risk(U, V): # <- signatur eventuell anpassen
     
     return risk
 
+
+def test_data_gen():
+    uniform_random_data(2, 1, 3, 2)
+
+
 if __name__ == '__main__':
-    test_sample_point()
+    test_data_gen()
     # create_mean_std(10, 4, 100)

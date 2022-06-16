@@ -71,21 +71,22 @@ def cost_func(X_train, qnn: QNN, unitary, ref_wires: List[int], dev: qml.Device)
             adjoint_unitary_circuit(unitary)(wires=qnn.wires)  # Adjoint U
             qml.MottonenStatePreparation(el, wires=qnn.wires+ref_wires).inv()  # Inverse Amplitude Encoding
             return qml.probs(wires=qnn.wires+ref_wires)
-        cost += (1 - circuit()[0])
+        cost += circuit()[0]
 
-    return cost / len(X_train)
-
-
+    return 1 - (cost / len(X_train))
 
 
-def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int], dev: qml.Device):
+
+
+def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
+              dev: qml.Device, learning_rate: int, num_epochs: int):
     num_qubits = len(qnn.wires) + len(ref_wires)
     num_layers = qnn.num_layers
     # set up the optimizer
-    opt = torch.optim.Adam([qnn.params], lr=0.1)
+    opt = torch.optim.Adam([qnn.params], lr=learning_rate)
 
     # number of steps in the optimization routine
-    steps = 50
+    steps = num_epochs
 
     # the final stage of optimization isn't always the best, so we keep track of
     # the best parameters along the way
@@ -106,7 +107,7 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int], d
         all_losses.append(total_loss)
         # Keep track of progress every 10 steps
         if n % 10 == 9 or n == steps - 1:
-            print("Cost after {} steps is {:.4f}".format(n + 1, total_loss))
+            print(f"Cost after {n + 1} steps is {total_loss}")
 
     return all_losses
 
