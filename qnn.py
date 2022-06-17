@@ -110,7 +110,7 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
             print(f"Cost after {n + 1} steps is {total_loss}")
         if total_loss == 0.0:
             print(f"loss({total_loss}) = 0.0")
-            pass
+            break
 
     return all_losses
 
