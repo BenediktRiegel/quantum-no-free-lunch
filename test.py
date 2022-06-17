@@ -22,11 +22,11 @@ def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
     sum_risk = 0
     for i in range(num_unitaries):
         # Draw random unitary
-        print(f"unitary {i+1}")
+        print(f"unitary {i+1}/{num_unitaries}")
         unitary = random_unitary_matrix(x_qbits)
         # Train it with <num_train_data> many random datasets
         for j in range(num_training_data):
-            print(f"training dataset {j + 1}")
+            print(f"training dataset {j + 1}/{num_training_data}")
             # Init data and neural net
             dataset = SchmidtDataset(schmidt_rank, num_points, x_qbits, r_qbits)
             dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
