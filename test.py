@@ -22,9 +22,11 @@ def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
     sum_risk = 0
     for i in range(num_unitaries):
         # Draw random unitary
+        print(f"unitary {i+1}")
         unitary = random_unitary_matrix(x_qbits)
         # Train it with <num_train_data> many random datasets
         for j in range(num_training_data):
+            print(f"training dataset {j + 1}")
             # Init data and neural net
             dataset = SchmidtDataset(schmidt_rank, num_points, x_qbits, r_qbits)
             dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
@@ -35,12 +37,12 @@ def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
             dev.shots = 1000
             # Train and compute risk
             losses = train_qnn(qnn, unitary, dataloader, ref_wires, dev, learning_rate, num_epochs)
-            plt.plot(list(range(len(losses))), losses)
+            # plt.plot(list(range(len(losses))), losses)
             trained_params = qnn.params
             risk = calc_risk_qnn(qnn, unitary)
             sum_risk += risk
-    plt.grid(True)
-    plt.show()
+    # plt.grid(True)
+    # plt.show()
 
     #average over all unitaries and training sets
     average_risk = sum_risk/(num_unitaries * num_training_data)
