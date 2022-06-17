@@ -102,8 +102,9 @@ def test():
 
 
 def main():
-    # test_fig2()
-    print(np.load('./experimental_results/exp1/result.npy'))
+    test_fig2()
+    test_fig3()
+    # print(np.load('./experimental_results/exp1/result.npy'))
 
 
 if __name__ == '__main__':

@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "quantum-no-free-lunch"
+version = "0.1.0"
+description = ""
+authors = ["BenediktRiegel <Benedikt.Riegel@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = ">=3.10,<3.11"
+scipy = "^1.8.1"
+matplotlib = "^3.5.2"
+torch = "^1.11.0"
+PennyLane-qiskit = "^0.23.0"
+qiskit = "^0.36.2"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
