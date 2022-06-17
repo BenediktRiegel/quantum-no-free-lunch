@@ -9,9 +9,9 @@ def exp_fig2_3(config, save_dir):
     for i in range(config['x_qbits'] + 1):
         rank = 2**i
         risk_list = []
-        print(f"rank {i}/{config['x_qbits'] + 1}")
+        print(f"rank {i+1}/{config['x_qbits'] + 1} (rank={rank})")
         for num_points in range(1, config['num_points'] + 1):
-            print(f"num_points {num_points}/{config['num_points'] + 1}")
+            print(f"num_points {num_points}/{config['num_points']}")
             risk = calc_avg_risk(rank, num_points, config['x_qbits'],
                                  config['r_qbits'], config['num_unitaries'],
                                  config['num_layers'], config['num_training_data'],
