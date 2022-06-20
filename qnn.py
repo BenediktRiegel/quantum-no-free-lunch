@@ -71,6 +71,7 @@ def cost_func(X_train, qnn: QNN, unitary, ref_wires: List[int], dev: qml.Device)
             adjoint_unitary_circuit(unitary)(wires=qnn.wires)  # Adjoint U
             qml.MottonenStatePreparation(el, wires=qnn.wires+ref_wires).inv()  # Inverse Amplitude Encoding
             return qml.probs(wires=qnn.wires+ref_wires)
+        print('run circuit')
         cost += circuit()[0]
 
     return 1 - (cost / len(X_train))
@@ -100,9 +101,13 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
         opt.zero_grad()
         total_loss = 0
         for X in dataloader:
+            print('calc cost funktion')
             loss = cost_func(X[0], qnn, unitary, ref_wires, dev)
+            print('backprop')
             loss.backward()
+            print('optimise')
             opt.step()
+            print('total loss')
             total_loss += loss.item()
 
         # all_losses.append(total_loss)
