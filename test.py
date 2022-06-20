@@ -37,7 +37,7 @@ def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
             dev.shots = 1000
             # Train and compute risk
             print('training qnn')
-            losses = train_qnn(qnn, unitary, dataloader, ref_wires, dev, learning_rate, num_epochs)
+            train_qnn(qnn, unitary, dataloader, ref_wires, dev, learning_rate, num_epochs)
             # plt.plot(list(range(len(losses))), losses)
             print('calculating risk')
             risk = calc_risk_qnn(qnn, unitary)

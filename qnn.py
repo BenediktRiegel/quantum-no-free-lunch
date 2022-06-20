@@ -80,8 +80,8 @@ def cost_func(X_train, qnn: QNN, unitary, ref_wires: List[int], dev: qml.Device)
 
 def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
               dev: qml.Device, learning_rate: int, num_epochs: int):
-    num_qubits = len(qnn.wires) + len(ref_wires)
-    num_layers = qnn.num_layers
+    # num_qubits = len(qnn.wires) + len(ref_wires)
+    # num_layers = qnn.num_layers
     # set up the optimizer
     opt = torch.optim.Adam([qnn.params], lr=learning_rate)
 
@@ -90,12 +90,13 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
 
     # the final stage of optimization isn't always the best, so we keep track of
     # the best parameters along the way
-    best_cost = 0
-    best_params = np.zeros((num_qubits, num_layers, 3))
+    # best_cost = 0
+    # best_params = np.zeros((num_qubits, num_layers, 3))
 
     # optimization begins
-    all_losses = []
+    # all_losses = []
     for n in range(steps):
+        print(f"step {n+1}/{steps}")
         opt.zero_grad()
         total_loss = 0
         for X in dataloader:
@@ -104,7 +105,7 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
             opt.step()
             total_loss += loss.item()
 
-        all_losses.append(total_loss)
+        # all_losses.append(total_loss)
         # Keep track of progress every 10 steps
         if n % 10 == 9 or n == steps - 1:
             print(f"Cost after {n + 1} steps is {total_loss}")
@@ -112,7 +113,7 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
             print(f"loss({total_loss}) = 0.0")
             break
 
-    return all_losses
+    # return all_losses
 
 
 class SchmidtDataset(torch.utils.data.Dataset):
