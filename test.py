@@ -36,15 +36,17 @@ def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
             dev = qml.device('default.qubit', wires=qnn.wires+ref_wires)
             dev.shots = 1000
             # Train and compute risk
+            print('training qnn')
             losses = train_qnn(qnn, unitary, dataloader, ref_wires, dev, learning_rate, num_epochs)
             # plt.plot(list(range(len(losses))), losses)
-            trained_params = qnn.params
+            print('calculating risk')
             risk = calc_risk_qnn(qnn, unitary)
             sum_risk += risk
     # plt.grid(True)
     # plt.show()
 
     #average over all unitaries and training sets
+    print('average risk')
     average_risk = sum_risk/(num_unitaries * num_training_data)
     return average_risk
 
