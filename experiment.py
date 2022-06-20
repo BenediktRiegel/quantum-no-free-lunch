@@ -30,9 +30,10 @@ def exp_fig2_3(config, save_dir):
     np.save(save_dir + 'result.npy', all_risks_array)
 
 def test_fig2():
-    num_layers = 10
+    print("start experiment 1")
     #Fig.2 Paper Sharma et al.
     config = gen_config(2, 2, 1, 1, 10, 10, 10, 0)
+    print("config generated")
     exp_fig2_3(config, './experimental_results/exp1/')
     # all_risks = []
     # for rank in [2 ** i for i in range(config['x_qbits'] + 1)]:
@@ -57,9 +58,11 @@ def test_fig2():
 
 
 def test_fig3():
+    print("start experiment 2")
     #Fig.3 Paper Sharma et al.
     #init config
     config = gen_config(1, 1, 6, 6, 10, 10, 100, 1, 0, 0.01, 8, 120, True)
+    print("config generated")
 
     # small test version
     # config = gen_config(1,2,2,2,3,2,2,1,0,0.01,8,3,True)
@@ -105,7 +108,7 @@ def test():
 
 
 def main():
-    test_fig2()
+    # test_fig2()
     test_fig3()
     # print(np.load('./experimental_results/exp1/result.npy'))
 
