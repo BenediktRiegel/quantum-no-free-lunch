@@ -11,6 +11,8 @@ matplotlib = "^3.5.2"
 torch = "^1.11.0"
 PennyLane-qiskit = "^0.23.0"
 qiskit = "^0.36.2"
+PennyLane-Lightning = "^0.24.0"
+PennyLane = "^0.24.0"
 
 [tool.poetry.dev-dependencies]
 
