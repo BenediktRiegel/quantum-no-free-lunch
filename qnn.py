@@ -5,15 +5,16 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from abc import abstractmethod
 from typing import List
-from utils import * #unitary_circuit, adjoint_unitary_circuit, quantum_risk
+from utils import adjoint_unitary_circuit, random_unitary_matrix, uniform_random_data, get_optimizer
 
 
 
 class QNN:
 
-    def __init__(self, wires: List[int], num_layers: int):
+    def __init__(self, wires: List[int], num_layers: int, use_torch=True):
         self.wires = wires
         self.num_layers = num_layers
+        self.use_torch=use_torch
         self.params = self.init_params()
 
     @abstractmethod
@@ -29,18 +30,24 @@ class QNN:
         """
 
     def get_matrix_V(self):
-        return qml.matrix(self.qnn)().detach().numpy()
+        if self.use_torch:
+            return qml.matrix(self.qnn)().detach().numpy()
+        else:
+            return qml.matrix(self.qnn)()
 
 
 class PennylaneQNN(QNN):
 
-    def __init__(self, wires: List[int], num_layers: int):
-        super(PennylaneQNN, self).__init__(wires, num_layers)
+    def __init__(self, wires: List[int], num_layers: int, use_torch=True):
+        super(PennylaneQNN, self).__init__(wires, num_layers, use_torch)
 
     def init_params(self):
         # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
-        params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
-        return Variable(torch.tensor(params), requires_grad=True)
+        if self.use_torch:
+            params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
+            return Variable(torch.tensor(params), requires_grad=True)
+        else:
+            return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
 
     def layer(self, layer_num):
         for i in range(len(self.wires)):
@@ -85,6 +92,7 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
     # num_layers = qnn.num_layers
     # set up the optimizer
     opt = torch.optim.Adam([qnn.params], lr=learning_rate)
+    # opt = torch.optim.SGD([qnn.params], lr=learning_rate)
 
     # number of steps in the optimization routine
     steps = num_epochs
@@ -95,7 +103,7 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
     # best_params = np.zeros((num_qubits, num_layers, 3))
 
     # optimization begins
-    # all_losses = []
+    all_losses = []
     for n in range(steps):
         print(f"step {n+1}/{steps}")
         opt.zero_grad()
@@ -110,7 +118,7 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
             print('total loss')
             total_loss += loss.item()
 
-        # all_losses.append(total_loss)
+        all_losses.append(total_loss)
         # Keep track of progress every 10 steps
         if n % 10 == 9 or n == steps - 1:
             print(f"Cost after {n + 1} steps is {total_loss}")
@@ -118,6 +126,7 @@ def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
             print(f"loss({total_loss}) = 0.0")
             break
 
+    print(all_losses)
     # return all_losses
 
 
@@ -160,7 +169,7 @@ def main():
     #             provider=provider,
     #         )
     # dev = qml.device("qiskit.aer", wires=qnn_wires + ref_wires, backend="statevector_simulator")
-    dev = qml.device("default.qubit", wires=qnn_wires+ref_wires)
+    dev = qml.device("lightning.qubit", wires=qnn_wires+ref_wires)
     train_qnn(qnn, unitary, dataloader, ref_wires, dev)
     print("unitary U:")
     print(np.abs(unitary))

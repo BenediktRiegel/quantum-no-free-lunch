@@ -1,4 +1,5 @@
 from qnn import *
+from utils import quantum_risk
 import matplotlib.pyplot as plt
 
 """
@@ -33,7 +34,8 @@ def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
             qnn = PennylaneQNN(wires=list(range(x_qbits)), num_layers=num_layers)
             # Init quantum device
             ref_wires = list(range(x_qbits, x_qbits+r_qbits))
-            dev = qml.device('default.qubit', wires=qnn.wires+ref_wires)
+            
+            dev = qml.device('lightning.qubit', wires=qnn.wires+ref_wires)
             dev.shots = 1000
             # Train and compute risk
             print('training qnn')

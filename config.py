@@ -1,5 +1,5 @@
 def gen_config(rank, num_points, x_qbits, r_qbits, num_unitaries, num_layers, num_training_data,
-               mean, std = 0, learning_rate=0.01, batch_size=8, num_epochs=120, shuffle=True):
+               mean, std = 0, learning_rate=0.01, batch_size=8, num_epochs=120, shuffle=True, optimizer='COBYLA'):
     '''
     schmidt_rank -- schmidt rank of states in training data (see param std)
     num_points -- number of points in each training dataset
@@ -23,5 +23,7 @@ def gen_config(rank, num_points, x_qbits, r_qbits, num_unitaries, num_layers, nu
         num_layers=num_layers,
         num_training_data=num_training_data,
         mean=mean,
-        std=std)
+        std=std,
+        optimizer=optimizer
+    )
     return config

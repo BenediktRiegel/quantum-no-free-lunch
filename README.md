@@ -13,5 +13,3 @@ This package uses Pennylane.
   - Fig. 2: 1 qubit, 10 unitaries and 10 training sets with entangled/unentangled states
   - Fig. 3: 6 qubits, 10 unitaries, each trained on 100 training sets with the same Schmidt rank $r = 2^0,\dots, 2^6$
 - Training sets with non-uniform Schmidt rank
-## Meeting 16.6.:
-- Server for running performance heavy experiments?
