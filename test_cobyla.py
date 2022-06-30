@@ -1,4 +1,4 @@
-#from scipy.optimize import minimize
+from scipy.optimize import minimize
 from qnn import PennylaneQNN, QNN
 from test import calc_risk_qnn
 from typing import List
@@ -111,18 +111,18 @@ def two_points_rank_one():
 
 
 if __name__ == '__main__':
-    # main()
+    main()
     # two_points_rank_one()
-    def plot_results(result, save_dir):
-        import matplotlib.pyplot as plt
-        plt.plot([1, 2], result[0, :], label='r=1')
-        plt.plot([1, 2], result[1, :], label='r=2')
-        plt.legend()
-        plt.savefig(save_dir)
-        plt.cla()
+    # def plot_results(result, save_dir):
+    #     import matplotlib.pyplot as plt
+    #     plt.plot([1, 2], result[0, :], label='r=1')
+    #     plt.plot([1, 2], result[1, :], label='r=2')
+    #     plt.legend()
+    #     plt.savefig(save_dir)
+    #     plt.cla()
     
     # adam_result = np.load('./experimental_results/exp1/result.npy')
     # plot_results(adam_result, './experimental_results/adam_result.png')
     # cobyla_result = np.array([[0.33881214585908626, 0.13059633551205363], [0.11080463275009704, 0.027872138911887306]])
-    cobyla_result = np.load('./experimental_results/exp1/cobyla_result.npy')
-    plot_results(cobyla_result, './experimental_results/cobyla_result1.png')
+    # cobyla_result = np.load('./experimental_results/exp1/cobyla_result.npy')
+    # plot_results(cobyla_result, './experimental_results/cobyla_result1.png')
