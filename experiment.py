@@ -62,8 +62,7 @@ def exp_fig2_3(config, save_dir):
             risk = calc_avg_risk(rank, num_points, config['x_qbits'],
                                  config['r_qbits'], config['num_unitaries'],
                                  config['num_layers'], config['num_training_data'],
-                                 config['learning_rate'], config['num_epochs'],
-                                 config['optimizer']
+                                 config['learning_rate'], config['num_epochs']
                                  )
             # Store risks directly
             writer.append(risk)
@@ -157,9 +156,9 @@ def two_points_rank_one():
 
 
 def main():
-    # test_fig2()
+    test_fig2()
     # test_fig3()
-    two_points_rank_one()
+    # two_points_rank_one()
     # print(np.load('./experimental_results/exp1/result.npy'))
 
 
