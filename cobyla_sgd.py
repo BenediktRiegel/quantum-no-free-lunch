@@ -1,5 +1,5 @@
 from scipy.optimize import minimize
-from qnn import PennylaneQNN, QNN
+from qnn import PennylaneQNN, QNN, cost_func, SchmidtDataset, DataLoader
 from test import calc_risk_qnn
 from typing import List
 import pennylane as qml
@@ -7,10 +7,13 @@ from utils import adjoint_unitary_circuit, random_unitary_matrix, uniform_random
 from config import gen_config
 import numpy as np
 from experiment import Writer
+import torch
+from log import Logger
+import time
 
 
 def get_cost_func(X_train, qnn: QNN, unitary, ref_wires: List[int], dev: qml.Device):
-    def cost_func(qnn_params: np.ndarray):
+    def preped_cost_func(qnn_params: np.ndarray):
         # print(qnn.params.shape)
         # qnn_params.reshape()
         qnn.params = qnn_params.reshape(qnn.params.shape)
@@ -32,41 +35,83 @@ def get_cost_func(X_train, qnn: QNN, unitary, ref_wires: List[int], dev: qml.Dev
 
         return 1 - (cost / len(X_train))
 
-    return cost_func
+    return preped_cost_func
 
 
 def train_qnn(qnn: QNN, unitary, dataset, ref_wires: List[int],
-              dev: qml.Device, num_epochs: int):
+              dev: qml.Device, num_epochs: int, learning_rate: float,
+              dataloader):
     # num_qubits = len(qnn.wires) + len(ref_wires)
     # num_layers = qnn.num_layers
     steps = num_epochs
     # all_losses = []
     f = get_cost_func(dataset, qnn, unitary, ref_wires, dev)
+    start_time = time.time()
     result = minimize(f, x0=qnn.params.copy().flatten(), method='COBYLA')
+    total_time = time.time() - start_time
+    print(f"Cobyla training took {total_time}s")
+
+    start_time = time.time()
+    qnn_torch_params = torch.autograd.Variable(torch.tensor(qnn.params), requires_grad=True)
+    qnn.params = qnn_torch_params
+    # set up the optimizer
+    # opt = torch.optim.Adam([qnn.params], lr=learning_rate)
+    opt = torch.optim.SGD([qnn.params], lr=learning_rate)
+
+    # optimization begins
+    all_losses = []
+    for n in range(steps):
+        print(f"step {n + 1}/{steps}")
+        opt.zero_grad()
+        total_loss = 0
+        for X in dataloader:
+            print('calc cost funktion')
+            loss = cost_func(X[0], qnn, unitary, ref_wires, dev)
+            print('backprop')
+            loss.backward()
+            print('optimise')
+            opt.step()
+            print('total loss')
+            total_loss += loss.item()
+
+        all_losses.append(total_loss)
+        # Keep track of progress every 10 steps
+        if n % 10 == 9 or n == steps - 1:
+            print(f"Cost after {n + 1} steps is {total_loss}")
+        if total_loss == 0.0:
+            print(f"loss({total_loss}) = 0.0")
+            break
+    total_time = time.time() - start_time
+    print(f"Gradient training took {total_time}s")
+    print(all_losses)
 
 
 def avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
-            num_unitaries, num_layers, num_training_data,
-            num_epochs):
+             num_unitaries, num_layers, num_training_data,
+             num_epochs, learning_rate, batch_size, logger):
     sum_risk = 0
     for i in range(num_unitaries):
         # Draw random unitary
-        print(f"unitary {i + 1}/{num_unitaries}")
+        # print(f"unitary {i + 1}/{num_unitaries}")
+        logger.update_num_unitary(i)
         unitary = random_unitary_matrix(x_qbits)
         # Train it with <num_train_data> many random datasets
         for j in range(num_training_data):
-            print(f"training dataset {j + 1}/{num_training_data}")
+            # print(f"training dataset {j + 1}/{num_training_data}")
+            logger.update_num_training_dataset(j)
             # Init data and neural net
             dataset = uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)
             qnn = PennylaneQNN(wires=list(range(x_qbits)), num_layers=num_layers, use_torch=False)
             # Init quantum device
             ref_wires = list(range(x_qbits, x_qbits + r_qbits))
+            dataset = SchmidtDataset(schmidt_rank, num_points, x_qbits, r_qbits)
+            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
             dev = qml.device('lightning.qubit', wires=qnn.wires + ref_wires)
             dev.shots = 1000
             # Train and compute risk
             print('training qnn')
-            train_qnn(qnn, unitary, dataset, ref_wires, dev, num_epochs)
+            train_qnn(qnn, unitary, dataset, ref_wires, dev, num_epochs, learning_rate, dataloader)
             # plt.plot(list(range(len(losses))), losses)
             print('calculating risk')
             risk = calc_risk_qnn(qnn, unitary)
@@ -80,22 +125,25 @@ def avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
     return average_risk
 
 
-def main():
-    save_dir = './experimental_results/exp1/'
-    writer = Writer(save_dir + 'cobyla_result.txt')
+def exp_fig2_3(config, save_dir):
+    writer = Writer(save_dir + 'cobyla_sgd_result.txt')
+    logger = Logger(config['x_qbits'], config['num_points'], config['num_unitaries'],
+                    config['num_training_data'])
     all_risks = []
-    config = gen_config(2, 2, 1, 1, 10, 4, 10, 0)
     for i in range(config['x_qbits'] + 1):
-        rank = 2**i
+        rank = 2 ** i
         risk_list = []
+        # print(f"rank {i + 1}/{config['x_qbits'] + 1} (rank={rank})")
         r_qbits = i
-        print(f"rank {i+1}/{config['x_qbits'] + 1} (rank={rank})")
+        logger.update_schmidt_rank(i)
         for num_points in range(1, config['num_points'] + 1):
-            print(f"num_points {num_points}/{config['num_points']}")
+            # print(f"num_points {num_points}/{config['num_points']}")
+            logger.update_num_points(num_points)
             risk = avg_risk(rank, num_points, config['x_qbits'],
                             r_qbits, config['num_unitaries'],
                             config['num_layers'], config['num_training_data'],
-                            config['num_epochs']
+                            config['num_epochs'], config['learning_rate'],
+                            config['batch_size'], logger
                             )
             writer.append(risk)
             risk_list.append(risk)
@@ -103,27 +151,18 @@ def main():
     all_risks_array = np.array(all_risks)
 
     # store risks
-    np.save(save_dir + 'cobyla_result.npy', all_risks_array)
+    np.save(save_dir + 'cobyla_sgd_result.npy', all_risks_array)
 
 
-def two_points_rank_one():
-    risk = avg_risk(1, 2, 1, 1, 10, 10, 10, 120)
-    print(risk)
+def fig2():
+    save_dir = './experimental_results/exp1/'
+    config = gen_config(2, 2, 1, 1, 10, 4, 10, 0)
+    exp_fig2_3(config, save_dir)
+
+
+def main():
+    fig2()
 
 
 if __name__ == '__main__':
     main()
-    # two_points_rank_one()
-    # def plot_results(result, save_dir):
-    #     import matplotlib.pyplot as plt
-    #     plt.plot([1, 2], result[0, :], label='r=1')
-    #     plt.plot([1, 2], result[1, :], label='r=2')
-    #     plt.legend()
-    #     plt.savefig(save_dir)
-    #     plt.cla()
-    
-    # adam_result = np.load('./experimental_results/exp1/result.npy')
-    # plot_results(adam_result, './experimental_results/adam_result.png')
-    # cobyla_result = np.array([[0.33881214585908626, 0.13059633551205363], [0.11080463275009704, 0.027872138911887306]])
-    # cobyla_result = np.load('./experimental_results/exp1/cobyla_result.npy')
-    # plot_results(cobyla_result, './experimental_results/cobyla_result1.png')

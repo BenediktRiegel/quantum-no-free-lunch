@@ -118,7 +118,7 @@ def create_mean_std(mean, std, num_samples, max_rank, counter):
 
 
 #create dataset of size <size> with a mean schmidt rank
-def uniform_random_data_mean(mean, std, num_samples, size, x_qbits, r_qbits):
+def uniform_random_data_mean(mean, std, num_samples, x_qbits, r_qbits):
     data = []
     numbers_mean_std, counter = create_mean_std(mean,std, num_samples)
     for i in range(len(numbers_mean_std)):

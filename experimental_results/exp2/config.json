@@ -1,0 +1,1 @@
+{"learning_rate": 0.01, "batch_size": 8, "num_epochs": 120, "shuffle": true, "schmidt_rank": 1, "num_points": 1, "x_qbits": 6, "r_qbits": 6, "num_unitaries": 10, "num_layers": 10, "num_training_data": 100, "mean": 1, "std": 0, "optimizer": "SGD"}

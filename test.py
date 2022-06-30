@@ -1,6 +1,8 @@
 from qnn import *
 from utils import quantum_risk
 import matplotlib.pyplot as plt
+import time
+from log import Logger
 
 """
 def construct_circuit(trained_params, num_layers, x_qbits):
@@ -19,18 +21,22 @@ def calc_risk_qnn(trained_qnn, U):
 
 def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
                   num_unitaries, num_layers, num_training_data,
-                  learning_rate, num_epochs):
+                  learning_rate, num_epochs, batch_size, mean_std, std, logger: Logger,
+                  qnn=None):
     sum_risk = 0
     for i in range(num_unitaries):
         # Draw random unitary
-        print(f"unitary {i+1}/{num_unitaries}")
+        logger.update_num_unitary(i)
         unitary = random_unitary_matrix(x_qbits)
         # Train it with <num_train_data> many random datasets
         for j in range(num_training_data):
-            print(f"training dataset {j + 1}/{num_training_data}")
+            logger.update_num_training_dataset(j)
             # Init data and neural net
-            dataset = SchmidtDataset(schmidt_rank, num_points, x_qbits, r_qbits)
-            dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
+            if mean_std:
+                dataset = SchmidtDataset_std(schmidt_rank, num_points, x_qbits, r_qbits, std)
+            else:
+                dataset = SchmidtDataset(schmidt_rank, num_points, x_qbits, r_qbits)
+            dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
             qnn = PennylaneQNN(wires=list(range(x_qbits)), num_layers=num_layers)
             # Init quantum device
             ref_wires = list(range(x_qbits, x_qbits+r_qbits))
@@ -39,7 +45,10 @@ def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
             dev.shots = 1000
             # Train and compute risk
             print('training qnn')
+            start_time = time.time()
             train_qnn(qnn, unitary, dataloader, ref_wires, dev, learning_rate, num_epochs)
+            total_time = time.time() - start_time
+            print(f"training took {total_time}s")
             # plt.plot(list(range(len(losses))), losses)
             print('calculating risk')
             risk = calc_risk_qnn(qnn, unitary)

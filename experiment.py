@@ -2,6 +2,7 @@ from config import gen_config
 from test import calc_avg_risk
 import json
 import numpy as np
+from log import Logger
 from os.path import exists
 
 
@@ -9,6 +10,7 @@ class Writer:
     def __init__(self, file_path):
         self.file_path = file_path
         f = open(file_path, 'w')
+        f.write('')
         f.close()
 
     def append(self, text):
@@ -51,18 +53,26 @@ def exp_fig2_3(config, save_dir):
         json.dump(config, f)
         f.close()
 
+    logger = Logger(config['x_qbits'], config['num_points'], config['num_unitaries'],
+                    config['num_training_data'])
     writer = Writer(save_dir + 'result.txt')
     all_risks = []
     for i in range(config['x_qbits'] + 1):
         rank = 2**i
         risk_list = []
-        print(f"rank {i+1}/{config['x_qbits'] + 1} (rank={rank})")
+        # print(f"rank {i+1}/{config['x_qbits'] + 1} (rank={rank})")
+        r_qbits = i
+        logger.update_schmidt_rank(i)
         for num_points in range(1, config['num_points'] + 1):
-            print(f"num_points {num_points}/{config['num_points']}")
+            logger.update_num_points(num_points)
+            # print(f"num_points {num_points}/{config['num_points']}")
             risk = calc_avg_risk(rank, num_points, config['x_qbits'],
-                                 config['r_qbits'], config['num_unitaries'],
+                                 r_qbits, config['num_unitaries'],
                                  config['num_layers'], config['num_training_data'],
-                                 config['learning_rate'], config['num_epochs']
+                                 config['learning_rate'], config['num_epochs'],
+                                 config['batch_size'],
+                                 False, 0,
+                                 logger
                                  )
             # Store risks directly
             writer.append(risk)
@@ -115,7 +125,7 @@ def test_fig3():
     # all_risks = []
     # for rank in [2**i for i in range(config['num_qbits'] + 1)]:
     #     risk_list = []
-    #     for num_points in range(1, config['num_points'] + 1):
+    #     for std in range(0, upper_std):
     #         risk = calc_avg_risk(rank, num_points, config['x_qbits'],
     #                              config['r_qbits'], config['num_unitaries'], config['num_layers'],
     #                              config['num_training_data'])
@@ -133,6 +143,96 @@ def test_fig3():
     # np.save('./experimental_results/exp2/result.npy', all_risks_array)
 
 
+def test_simple_mean_std(upper_std):
+    #store results for simply getting results from mean and std
+    # it has to hold true: mean + upper_std <= max_rank
+
+
+    print("start mean and std")
+    config = gen_config(1, 1, 6, 6, 10, 10, 100, 1, 0, 0.01, 8, 120, True, 'SGD')
+    print("config generated")
+
+    save_dir = './experimental_results/exp_mean_std'
+    # store config
+    with open(save_dir + 'config.json', 'w') as f:
+        json.dump(config, f)
+        f.close()
+
+    logger = Logger(config['x_qbits'], config['num_points'], config['num_unitaries'],
+                    config['num_training_data'])
+    writer = Writer(save_dir + 'result.txt')
+    all_risks = []
+
+    for std in range(0, upper_std):
+        #logger.update_num_points(num_points)
+        # print(f"num_points {num_points}/{config['num_points']}")
+        risk = calc_avg_risk(config['rank'], config['num_points'], config['x_qbits'],
+                                config['r_qbits'], config['num_unitaries'],
+                                config['num_layers'], config['num_training_data'],
+                                config['learning_rate'], config['num_epochs'],
+                                config['batch_size'],
+                                True, std, logger)
+
+
+        # Store risks directly
+        writer.append(risk)
+        all_risks.append(risk)
+    all_risks_array = np.array(all_risks)
+
+    # store risks
+    np.save(save_dir + 'result.npy', all_risks_array)
+
+def test_mean_std():
+    #create more exhaustive experiment for mean and std
+    #fix number go through all training pairs for the dataset
+    #compare among different ranks by plotting different
+
+    print("start mean and std")
+    config = gen_config(1, 1, 6, 6, 10, 10, 100, 1, 0, 0.01, 8, 120, True, 'SGD')
+    print("config generated")
+
+    save_dir = './experimental_results/exp_mean_std'
+    # store config
+    with open(save_dir + 'config.json', 'w') as f:
+        json.dump(config, f)
+        f.close()
+
+    logger = Logger(config['x_qbits'], config['num_points'], config['num_unitaries'],
+                    config['num_training_data'])
+    writer = Writer(save_dir + 'result.txt')
+    all_risks = []
+
+    max_rank = 2**config['x_qbits']
+
+    
+
+    for std in range(0, max_rank - config['rank']):
+        risk_list = []
+        # print(f"rank {i+1}/{config['x_qbits'] + 1} (rank={rank})")
+        #logger.update_schmidt_rank(i)
+        for num_points in range(1, config['num_points'] + 1):
+            #logger.update_num_points(num_points)
+            # print(f"num_points {num_points}/{config['num_points']}")
+            risk = calc_avg_risk(config['rank'], config['num_points'], config['x_qbits'],
+                                 config['r_qbits'], config['num_unitaries'],
+                                 config['num_layers'], config['num_training_data'],
+                                 config['learning_rate'], config['num_epochs'],
+                                 config['batch_size'],
+                                 True, std,
+                                 logger
+                                 )
+            # Store risks directly
+            writer.append(risk)
+            risk_list.append(risk)
+        all_risks.append(risk_list)
+    all_risks_array = np.array(all_risks)
+
+    # store risks
+    np.save(save_dir + 'result.npy', all_risks_array)
+
+
+
+
 def test():
 
     test_dict = dict(
@@ -148,11 +248,6 @@ def test():
     with open('./experimental_results/test.json', 'r') as f:
         result = json.load(f)
         f.close()
-
-
-def two_points_rank_one():
-    risk = calc_avg_risk(1, 2, 1, 1, 10, 1, 10, 0.01, 120)
-    print(risk)
 
 
 def main():

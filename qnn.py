@@ -5,7 +5,7 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from abc import abstractmethod
 from typing import List
-from utils import adjoint_unitary_circuit, random_unitary_matrix, uniform_random_data, get_optimizer
+from utils import *
 
 
 
@@ -145,6 +145,21 @@ class SchmidtDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.data)
 
+
+class SchmidtDataset_std(torch.utils.data.Dataset):
+    from utils import uniform_random_data
+    def __init__(self, schmidt_rank, num_points, x_qbits, r_qbits, std):
+        # Initialize the data and label list
+        self.data = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits)
+        self.labels = [0]*num_points
+
+    def __getitem__(self, index):
+        data = self.data[index]
+        label = self.labels[index]
+        return data, label
+
+    def __len__(self):
+        return len(self.data)
 
 def main():
     schmidt_rank = 4
