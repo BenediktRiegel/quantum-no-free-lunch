@@ -6,6 +6,10 @@ from scipy.optimize import fmin_cobyla
 from scipy.stats import unitary_group
 
 
+def abs2(x):
+    return x.real**2 + x.imag**2
+
+
 def hadamard_layer(wires):
     for i in wires:
         qml.Hadamard(i)
@@ -49,6 +53,14 @@ def tensor_product(state1: np.ndarray, state2: np.ndarray):
     result = np.zeros(len(state1)*len(state2), dtype=np.complex128)
     for i in range(len(state1)):
         result[i*len(state2):i*len(state2)+len(state2)] = state1[i] * state2
+    return result
+
+
+def torch_tensor_product(matrix1: torch.Tensor, matrix2: torch.Tensor):
+    result = torch.zeros((matrix1.shape[0]*matrix2.shape[0], matrix1.shape[1]*matrix2.shape[1]), dtype=torch.complex128)
+    for i in range(matrix1.shape[0]):
+        for j in range(matrix1.shape[1]):
+            result[i*matrix2.shape[0]:i*matrix2.shape[0]+matrix2.shape[0], j*matrix2.shape[1]:j*matrix2.shape[1]+matrix2.shape[1]] = matrix1[i, j] * matrix2
     return result
 
 

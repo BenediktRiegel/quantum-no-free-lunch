@@ -156,7 +156,7 @@ def exp_fig2_3(config, save_dir):
 
 def fig2():
     save_dir = './experimental_results/exp1/'
-    config = gen_config(2, 2, 1, 1, 10, 4, 10, 0)
+    config = gen_config(2, 2, 1, 1, 10, 4, 10, 0, num_epochs=1000)
     exp_fig2_3(config, save_dir)
 
 

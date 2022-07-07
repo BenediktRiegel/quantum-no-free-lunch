@@ -1,3 +1,5 @@
+import time
+
 import pennylane as qml
 import numpy as np
 import torch
@@ -29,16 +31,25 @@ class QNN:
         Creates qnn circuit on self.wires with self.num_layers many layers
         """
 
+    @abstractmethod
+    def parameter_shift_qnn(self, shift_idx, shift_version):
+        """
+        Creates qnn circuit, but parameter shifted
+        """
+
     def get_matrix_V(self):
         if self.use_torch:
             return qml.matrix(self.qnn)().detach().numpy()
         else:
             return qml.matrix(self.qnn)()
+    
+    def get_tensor_V(self):
+        return qml.matrix(self.qnn)()
 
 
 class PennylaneQNN(QNN):
 
-    def __init__(self, wires: List[int], num_layers: int, use_torch=True):
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False):
         super(PennylaneQNN, self).__init__(wires, num_layers, use_torch)
 
     def init_params(self):
@@ -49,20 +60,61 @@ class PennylaneQNN(QNN):
         else:
             return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
 
+    def entanglement(self):
+        for i in range(len(self.wires) - 1):
+            c_wire = self.wires[i]
+            t_wire = self.wires[i+1]
+            qml.CNOT(wires=[c_wire, t_wire])
+
     def layer(self, layer_num):
         for i in range(len(self.wires)):
             qml.RX(self.params[i, layer_num, 0], wires=self.wires[i])
             qml.RY(self.params[i, layer_num, 1], wires=self.wires[i])
             qml.RZ(self.params[i, layer_num, 2], wires=self.wires[i])
 
-        for i in range(len(self.wires) - 1):
-            c_wire = self.wires[i]
-            t_wire = self.wires[i+1]
-            qml.CNOT(wires=[c_wire, t_wire])
+        self.entanglement()
 
     def qnn(self):
         for j in range(self.num_layers):
             self.layer(j)
+
+    def get_param_indices(self):
+        for wire in range(len(self.wires)):
+            for layer in range(self.num_layers):
+                for param in range(3):
+                    yield (wire, layer, param)
+
+    def parameter_shift_layer(self, layer_num, shifted_wire, shifted_param, shift_factor):
+        for i in range(shifted_wire):
+            qml.RX(self.params[i, layer_num, 0], wires=self.wires[i])
+            qml.RY(self.params[i, layer_num, 1], wires=self.wires[i])
+            qml.RZ(self.params[i, layer_num, 2], wires=self.wires[i])
+
+        shifted_params = self.params[shifted_wire, layer_num, :]
+        shifted_params[shifted_param] = self.params[shifted_wire, layer_num, shifted_param] + shift_factor*(np.pi / 4.)
+        qml.RX(shifted_params[0], wires=shifted_wire)
+        qml.RY(shifted_params[1], wires=shifted_wire)
+        qml.RZ(shifted_params[2], wires=shifted_wire)
+
+        for i in range(shifted_wire + 1, len(self.wires)):
+            qml.RX(self.params[i, layer_num, 0], wires=self.wires[i])
+            qml.RY(self.params[i, layer_num, 1], wires=self.wires[i])
+            qml.RZ(self.params[i, layer_num, 2], wires=self.wires[i])
+
+        self.entanglement()
+
+    def parameter_shift_qnn(self, shift_idx, shift_factor):
+        (shifted_wire, shifted_layer, shifted_param) = shift_idx
+        for j in range(shifted_layer):
+            self.layer(j)
+        self.parameter_shift_layer(shifted_layer, shifted_wire, shifted_param, shift_factor)
+        for j in range(shifted_layer+1, self.num_layers):
+            self.layer(j)
+
+
+def get_density_matrix(qstate):
+    qstate = np.array(qstate)
+    return np.outer(qstate, qstate.conj())
 
 
 def cost_func(X_train, qnn: QNN, unitary, ref_wires: List[int], dev: qml.Device):
@@ -73,17 +125,49 @@ def cost_func(X_train, qnn: QNN, unitary, ref_wires: List[int], dev: qml.Device)
         def circuit():
             # print(f"all wires {qnn.wires+ref_wires}")
             # print(f"{len(el)} should equal 2**{len(qnn.wires)+len(ref_wires)} = {2**(len(qnn.wires)+len(ref_wires))}")
-            qml.MottonenStatePreparation(el, wires=qnn.wires+ref_wires)  # Amplitude Encoding
+            qml.QubitStateVector(el, wires=qnn.wires+ref_wires)  # Amplitude Encoding
             qnn.qnn()
-            adjoint_unitary_circuit(unitary)(wires=qnn.wires)  # Adjoint U
+            # adjoint_unitary_circuit(unitary)(wires=qnn.wires)  # Adjoint U
             qml.MottonenStatePreparation(el, wires=qnn.wires+ref_wires).inv()  # Inverse Amplitude Encoding
-            return qml.probs(wires=qnn.wires+ref_wires)
+            # return qml.probs(op=qml.Hermitian(get_density_matrix(el), wires=qnn.wires+ref_wires))
+            # return qml.probs(wires=qnn.wires+ref_wires)
+            # return qml.probs(wires=[0])
+            return qml.sample(wires=qnn.wires+ref_wires)
         print('run circuit')
-        cost += circuit()[0]
+        samples = circuit()
+        print('post_processing')
+        all_zeros = torch.zeros((len(qnn.wires)+len(ref_wires),))
+        zero_prob = 0
+        for sample in samples:
+            if (sample == all_zeros).all():
+                zero_prob += 1
+        zero_prob /= len(samples)
+        # for sample in samples:
+        cost += zero_prob
 
     return 1 - (cost / len(X_train))
 
 
+def fast_cost_func(X_train, qnn: QNN, ref_wires: List[int], dev: qml.Device, transpiled_unitary):
+    #input params: train data, qnn, unitary to learn, refernce system wires and device
+    cost = torch.zeros(1)
+    for el in X_train:
+        @qml.qnode(dev)
+        def circuit():
+            qml.QubitStateVector(el, wires=qnn.wires+ref_wires)  # Amplitude Encoding
+            qnn.qnn()
+            transpiled_unitary(wires=qnn.wires)  # Adjoint U
+            return qml.probs(wires=[0])
+        # print('run circuit')
+        circuit()
+        # print('post processing')
+        state = dev._state
+        # print(state.shape)
+        state = np.reshape(state, (2**(len(state.shape)),))
+        prob = abs2(np.inner(el, state))
+        cost += prob
+
+    return 1 - (cost / len(X_train))
 
 
 def train_qnn(qnn: QNN, unitary, dataloader: DataLoader, ref_wires: List[int],
@@ -162,34 +246,23 @@ class SchmidtDataset_std(torch.utils.data.Dataset):
         return len(self.data)
 
 def main():
-    schmidt_rank = 4
-    num_points = 1
-    x_qbits = 2
-    r_qbits = 2
-    qnn_wires = list(range(x_qbits))
-    ref_wires = list(range(x_qbits, x_qbits+r_qbits))
-
-
-    unitary = random_unitary_matrix(x_qbits)
-    dataset = SchmidtDataset(schmidt_rank, num_points, x_qbits, r_qbits)
-    dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
-    qnn = PennylaneQNN(wires=qnn_wires, num_layers=10)
-
-
-    # provider = IBMQ.load_account()
-    # dev = qml.device(
-    #             "qiskit.ibmq",
-    #             wires=qnn_wires + ref_wires,
-    #             backend="ibmq_qasm_simulator",
-    #             provider=provider,
-    #         )
-    # dev = qml.device("qiskit.aer", wires=qnn_wires + ref_wires, backend="statevector_simulator")
-    dev = qml.device("lightning.qubit", wires=qnn_wires+ref_wires)
-    train_qnn(qnn, unitary, dataloader, ref_wires, dev)
-    print("unitary U:")
-    print(np.abs(unitary))
-    print("qnn unitary V:")
-    print(np.abs(qnn.get_matrix_V()))
+    from quantum_backends import QuantumBackends
+    x_qbits = 1
+    X_train = np.array([[0, 0, 0, 0]])
+    dev = QuantumBackends.qml_lightning.get_pennylane_backend('', '', x_qbits*2)
+    qnn = PennylaneQNN(list(range(x_qbits)), 1, use_torch=False)
+    ref_wires = list(range(x_qbits, 2*x_qbits))
+    unitary = np.array([
+        [0, 1],
+        [1, 0]
+    ])
+    qnn.params = np.array([
+        [
+            [np.pi*0.75, 0, 0]
+        ]
+    ])
+    transpiled_unitary = adjoint_unitary_circuit(unitary)
+    print(fast_cost_func(X_train, qnn, ref_wires, dev, transpiled_unitary))
 
 
 if __name__ == '__main__':
