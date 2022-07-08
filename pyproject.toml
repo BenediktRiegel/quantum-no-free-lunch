@@ -8,7 +8,6 @@ authors = ["BenediktRiegel <Benedikt.Riegel@gmail.com>"]
 python = ">=3.10,<3.11"
 scipy = "^1.8.1"
 matplotlib = "^3.5.2"
-torch = "^1.11.0"
 PennyLane-qiskit = "^0.23.0"
 qiskit = "^0.36.2"
 PennyLane-Lightning = "^0.24.0"

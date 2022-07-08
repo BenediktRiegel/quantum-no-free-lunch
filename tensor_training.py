@@ -18,7 +18,7 @@ def cost_func(X, qnn, unitary, r_I):
     for el in X:
         state = torch.matmul(V, el)
         state = torch.matmul(unitary, state)
-        cost += torch.sqrt(torch.abs(torch.dot(el, state)))
+        cost += torch.square(torch.abs(torch.dot(el, state)))
     cost /= len(X)
     return 1 - cost
 
@@ -26,8 +26,8 @@ def cost_func(X, qnn, unitary, r_I):
 def train(X, qnn, unitary, num_epochs, optimizer, r_I):
     for i in range(num_epochs):
         loss = cost_func(X, qnn, unitary, r_I)
-        # if i % 50 == 0:
-        # print(f"epoch [{i+1}/{num_epochs}] loss={loss.item()}")
+        if i % 20 == 0:
+            print(f"epoch [{i+1}/{num_epochs}] loss={loss.item()}")
         if loss.item() == 0.0:
             break
         optimizer.zero_grad()
@@ -55,7 +55,7 @@ def init(num_layers, num_qbits):
     r_I = I(2**r_qbits)
     U_inv_I = torch_tensor_product(torch.from_numpy(U_inv), r_I)
 
-    optimizer = torch.optim.SGD([qnn.params], lr=0.01)
+    optimizer = torch.optim.SGD([qnn.params], lr=0.1)
 
     starting_time = time.time()
     train(X, qnn, U_inv_I, 1, optimizer, r_I)
