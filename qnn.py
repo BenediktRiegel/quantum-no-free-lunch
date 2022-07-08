@@ -65,6 +65,7 @@ class PennylaneQNN(QNN):
             c_wire = self.wires[i]
             t_wire = self.wires[i+1]
             qml.CNOT(wires=[c_wire, t_wire])
+        qml.CNOT(wires=[self.wires[-1], self.wires[0]])
 
     def layer(self, layer_num):
         for i in range(len(self.wires)):
@@ -112,6 +113,42 @@ class PennylaneQNN(QNN):
             self.layer(j)
 
 
+class OffsetQNN(QNN):
+
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False):
+        super(OffsetQNN, self).__init__(wires, num_layers, use_torch)
+
+    def init_params(self):
+        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        if self.use_torch:
+            params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
+            return Variable(torch.tensor(params), requires_grad=True)
+        else:
+            return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
+
+    def entanglement(self, layer_num):
+        layer_num = layer_num % len(self.wires)
+        if layer_num == 0:
+            layer_num += 1
+        for i in range(len(self.wires)):
+            c_wire = self.wires[i]
+            t_i = (i+layer_num) % len(self.wires)
+            t_wire = self.wires[t_i]
+            qml.CNOT(wires=[c_wire, t_wire])
+
+    def layer(self, layer_num):
+        for i in range(len(self.wires)):
+            qml.RX(self.params[i, layer_num, 0], wires=self.wires[i])
+            qml.RY(self.params[i, layer_num, 1], wires=self.wires[i])
+            qml.RZ(self.params[i, layer_num, 2], wires=self.wires[i])
+
+        self.entanglement(layer_num)
+
+    def qnn(self):
+        for j in range(self.num_layers):
+            self.layer(j)
+
+
 def get_density_matrix(qstate):
     qstate = np.array(qstate)
     return np.outer(qstate, qstate.conj())
@@ -123,27 +160,12 @@ def cost_func(X_train, qnn: QNN, unitary, ref_wires: List[int], dev: qml.Device)
     for el in X_train:
         @qml.qnode(dev, interface="torch")
         def circuit():
-            # print(f"all wires {qnn.wires+ref_wires}")
-            # print(f"{len(el)} should equal 2**{len(qnn.wires)+len(ref_wires)} = {2**(len(qnn.wires)+len(ref_wires))}")
             qml.QubitStateVector(el, wires=qnn.wires+ref_wires)  # Amplitude Encoding
             qnn.qnn()
-            # adjoint_unitary_circuit(unitary)(wires=qnn.wires)  # Adjoint U
+            adjoint_unitary_circuit(unitary)(wires=qnn.wires)  # Adjoint U
             qml.MottonenStatePreparation(el, wires=qnn.wires+ref_wires).inv()  # Inverse Amplitude Encoding
-            # return qml.probs(op=qml.Hermitian(get_density_matrix(el), wires=qnn.wires+ref_wires))
-            # return qml.probs(wires=qnn.wires+ref_wires)
-            # return qml.probs(wires=[0])
-            return qml.sample(wires=qnn.wires+ref_wires)
-        print('run circuit')
-        samples = circuit()
-        print('post_processing')
-        all_zeros = torch.zeros((len(qnn.wires)+len(ref_wires),))
-        zero_prob = 0
-        for sample in samples:
-            if (sample == all_zeros).all():
-                zero_prob += 1
-        zero_prob /= len(samples)
-        # for sample in samples:
-        cost += zero_prob
+            return qml.probs(wires=qnn.wires+ref_wires)
+        cost += circuit()[0]
 
     return 1 - (cost / len(X_train))
 
