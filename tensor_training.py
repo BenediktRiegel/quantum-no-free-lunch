@@ -1,4 +1,4 @@
-from qnn import QNN, PennylaneQNN, cost_func, fast_cost_func
+from qnn import QNN, PennylaneQNN
 import pennylane as qml
 from quantum_backends import QuantumBackends
 from utils import uniform_random_data, random_unitary_matrix, torch_tensor_product
@@ -27,7 +27,7 @@ def train(X, qnn, unitary, num_epochs, optimizer, r_I):
     for i in range(num_epochs):
         loss = cost_func(X, qnn, unitary, r_I)
         # if i % 50 == 0:
-        print(f"epoch [{i+1}/{num_epochs}] loss={loss.item()}")
+        # print(f"epoch [{i+1}/{num_epochs}] loss={loss.item()}")
         if loss.item() == 0.0:
             break
         optimizer.zero_grad()
@@ -51,18 +51,24 @@ def init(num_layers, num_qbits):
     print('prep')
     X = torch.from_numpy(np.array(uniform_random_data(1, 2, x_qbits, r_qbits)))
     U = random_unitary_matrix(x_qbits)
+    U_inv = U.conj().T
     r_I = I(2**r_qbits)
-    U_I = torch_tensor_product(torch.from_numpy(U), r_I)
+    U_inv_I = torch_tensor_product(torch.from_numpy(U_inv), r_I)
 
     optimizer = torch.optim.SGD([qnn.params], lr=0.01)
 
-    train(X, qnn, U_I, 100, optimizer, r_I)
+    starting_time = time.time()
+    train(X, qnn, U_inv_I, 1, optimizer, r_I)
+    total_time = time.time() - starting_time
 
     print(quantum_risk(U, qnn.get_matrix_V()))
+    return total_time
 
 
 def main():
-    init(4, 4)
+    num_layers = 1
+    for i in range(1, 7):
+        training_time = init(num_layers, i)
 
 
 if __name__ == '__main__':
