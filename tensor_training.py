@@ -131,8 +131,8 @@ def plot_runtime_to_num_layers():
 
 
 def plot_runtime_to_schmidt_rank():
-    num_layers = [1, 2, 4]
-    qbits = [2]
+    num_layers = [1] + list(range(5, 100, 5))
+    qbits = [4]
     num_epochs = 200
     for qbit in qbits:
         schmidt_rank = [2**i for i in range(qbit+1)]
