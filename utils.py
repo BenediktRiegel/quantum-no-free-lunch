@@ -56,8 +56,8 @@ def tensor_product(state1: np.ndarray, state2: np.ndarray):
     return result
 
 
-def torch_tensor_product(matrix1: torch.Tensor, matrix2: torch.Tensor):
-    result = torch.zeros((matrix1.shape[0]*matrix2.shape[0], matrix1.shape[1]*matrix2.shape[1]), dtype=torch.complex128)
+def torch_tensor_product(matrix1: torch.Tensor, matrix2: torch.Tensor, device='cpu'):
+    result = torch.zeros((matrix1.shape[0]*matrix2.shape[0], matrix1.shape[1]*matrix2.shape[1]), dtype=torch.complex128, device=device)
     for i in range(matrix1.shape[0]):
         for j in range(matrix1.shape[1]):
             result[i*matrix2.shape[0]:i*matrix2.shape[0]+matrix2.shape[0], j*matrix2.shape[1]:j*matrix2.shape[1]+matrix2.shape[1]] = matrix1[i, j] * matrix2

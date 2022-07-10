@@ -13,14 +13,15 @@ from utils import *
 
 class QNN:
 
-    def __init__(self, wires: List[int], num_layers: int, use_torch=True):
+    def __init__(self, wires: List[int], num_layers: int, use_torch=True, device='cpu'):
         self.wires = wires
         self.num_layers = num_layers
-        self.use_torch=use_torch
+        self.use_torch = use_torch
+        self.device = device
         self.params = self.init_params()
 
     @abstractmethod
-    def init_params(self) -> Variable:
+    def init_params(self):
         """
         Initialises the parameters of the quantum neural network
         """
@@ -49,8 +50,8 @@ class QNN:
 
 class PennylaneQNN(QNN):
 
-    def __init__(self, wires: List[int], num_layers: int, use_torch=False):
-        super(PennylaneQNN, self).__init__(wires, num_layers, use_torch)
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
+        super(PennylaneQNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
         # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
@@ -61,11 +62,12 @@ class PennylaneQNN(QNN):
             return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
 
     def entanglement(self):
-        for i in range(len(self.wires) - 1):
-            c_wire = self.wires[i]
-            t_wire = self.wires[i+1]
-            qml.CNOT(wires=[c_wire, t_wire])
-        qml.CNOT(wires=[self.wires[-1], self.wires[0]])
+        if len(self.wires) > 1:
+            for i in range(len(self.wires)):
+                c_wire = self.wires[i]
+                t_i = i % len(self.wires)
+                t_wire = self.wires[t_i]
+                qml.CNOT(wires=[c_wire, t_wire])
 
     def layer(self, layer_num):
         for i in range(len(self.wires)):
@@ -115,8 +117,8 @@ class PennylaneQNN(QNN):
 
 class OffsetQNN(QNN):
 
-    def __init__(self, wires: List[int], num_layers: int, use_torch=False):
-        super(OffsetQNN, self).__init__(wires, num_layers, use_torch)
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
+        super(OffsetQNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
         # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
