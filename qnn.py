@@ -65,7 +65,7 @@ class PennylaneQNN(QNN):
         if len(self.wires) > 1:
             for i in range(len(self.wires)):
                 c_wire = self.wires[i]
-                t_i = i % len(self.wires)
+                t_i = (i+1) % len(self.wires)
                 t_wire = self.wires[t_i]
                 qml.CNOT(wires=[c_wire, t_wire])
 

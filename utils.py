@@ -4,6 +4,7 @@ from scipy.stats import unitary_group
 import torch
 from scipy.optimize import fmin_cobyla
 from scipy.stats import unitary_group
+from typing import List
 
 
 def abs2(x):
@@ -31,7 +32,9 @@ def one_hot_encoding(num, num_bits):
     return result
 
 
-def uniformly_sample_from_base(num_qbits, size):
+def uniformly_sample_from_base(num_qbits: int, size: int):
+    if num_qbits == 0:
+        return np.ones((1, 1))
     # uniform sampling of basis vectors
     num_bits = np.power(2, num_qbits)
     base = []
@@ -76,7 +79,7 @@ def uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits):
 
 
 # create dataset of size <size> with a given schmidt rank
-def uniform_random_data(schmidt_rank, size, x_qbits, r_qbits):
+def uniform_random_data(schmidt_rank: int, size: int, x_qbits: int, r_qbits: int) -> List[List[float]]:
     data = []
     # size = number data samples of trainset
     for i in range(size):
@@ -244,10 +247,14 @@ def get_optimizer(optimizer_name: str, qnn_params, learning_rate):
 
 
 def test_data_gen():
-    uniform_random_data(2, 1, 3, 2)
+    x_qbits = 2
+    schmidt_rank = 1
+    r_qbits = int(np.ceil(np.log2(schmidt_rank)))
+    size = 1
+    X = np.array(uniform_random_data(schmidt_rank, size, x_qbits, r_qbits))
+    print(f"X.shape = {X.shape}")
+    print(f"X.shape[1]={X.shape[1]} should equal {2**(x_qbits+r_qbits)}")
 
 
 if __name__ == '__main__':
-    #test_data_gen()
-    final_samples, counter =create_mean_std(15, 5, 100, 64,1)
-    print("# of iterations:",  counter)
+    test_data_gen()

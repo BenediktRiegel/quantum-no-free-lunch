@@ -5,18 +5,35 @@ import numpy as np
 from utils import quantum_risk
 import torch
 import matplotlib.pyplot as plt
+from typing import List
 
 torch.manual_seed(4241)
 np.random.seed(4241)
 
 
-def plot_loss(losses, num_qbits, num_layers):
-    plt.plot(list(range(len(losses))), losses)
-    plt.title(f"Loss for net with {num_qbits} qbits and {num_layers} layers")
-    plt.xlabel("epochs")
-    plt.ylabel("loss")
-    plt.savefig(f"./plots/loss_{num_qbits}_qbits_{num_layers}_layers.png")
-    plt.cla()
+def plot_loss(losses, num_qbits, num_layers, num_points, schmidt_rank):
+    if isinstance(losses[0], list):
+        losses = np.array(losses)
+        # losses shape is r x layer x epochs
+        for j in range(len(num_layers)):
+            num_layer = num_layers[j]
+            for i in range(len(schmidt_rank)):
+                r = schmidt_rank[i]
+                loss = losses[i, j]
+                plt.plot(list(range(len(loss))), loss, label=f"r={r}")
+            plt.legend()
+            plt.title(f"Loss for net with {num_qbits} qbits, {num_layer} layers, {num_points} data points")
+            plt.xlabel("epochs")
+            plt.ylabel("loss")
+            plt.savefig(f"./plots/loss_{num_qbits}_qbits_{num_layer}_layers_{num_points}_datapoints.png")
+            plt.cla()
+    else:
+        plt.plot(list(range(len(losses))), losses)
+        plt.title(f"Loss for net with {num_qbits} qbits, {num_layers} layers, {num_points} data points, {schmidt_rank} schmidt rank")
+        plt.xlabel("epochs")
+        plt.ylabel("loss")
+        plt.savefig(f"./plots/loss_{num_qbits}_qbits_{num_layers}_layers_{num_points}_datapoints_{schmidt_rank}_schmidtrank.png")
+        plt.cla()
 
 
 def cost_func(X, qnn, unitary, r_I):
@@ -56,14 +73,14 @@ def I(size):
     return matrix
 
 
-def init(num_layers, num_qbits):
+def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs):
     x_qbits = num_qbits
-    r_qbits = num_qbits
+    r_qbits = int(np.ceil(np.log2(schmidt_rank)))
     x_wires = list(range(num_qbits))
     qnn = PennylaneQNN(wires=x_wires, num_layers=num_layers, use_torch=True)
 
     print('prep')
-    X = torch.from_numpy(np.array(uniform_random_data(2**x_qbits, 2, x_qbits, r_qbits)))
+    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
     U = random_unitary_matrix(x_qbits)
     # U = qnn.get_matrix_V()
     U_inv = U.conj().T
@@ -73,39 +90,96 @@ def init(num_layers, num_qbits):
     optimizer = torch.optim.Adam([qnn.params], lr=0.1)
 
     starting_time = time.time()
-    losses = train(X, qnn, U_inv_I, 75, optimizer, r_I)
+    losses = train(X, qnn, U_inv_I, num_epochs, optimizer, r_I)
     total_time = time.time() - starting_time
-    plot_loss(losses, num_qbits, num_layers)
 
     print(f"risk = {quantum_risk(U, qnn.get_matrix_V())}")
-    return total_time, losses[-1]
+    return total_time, losses
 
 
-def main():
+def plot_runtime_to_num_layers():
     # time = init(num_layers=1, num_qbits=1)
     # print(f"{time}s")
-    num_layers = [1] + list(range(5, 100, 5))
-    qbits = [4]
-    final_losses = []
+    # num_layers = [1] + list(range(5, 100, 5))
+    # qbits = [4]
+    num_epochs = 200
+    num_points = 2
+    num_layers = [1]
+    qbits = [1]
+    schmidt_rank = 1
+    min_losses = []
     times = []
     for qbit in qbits:
         for num_layer in num_layers:
-            training_time, final_loss = init(num_layer, qbit)
+            training_time, losses = init(num_layer, qbit, 1, num_points, num_epochs)
+            plot_loss(losses, qbit, num_layer, num_points, schmidt_rank)
             print(f"Training with {qbit} qubits and {num_layer} layers took {training_time}s")
-            final_losses.append(final_loss)
+            min_losses.append(np.array(losses).min())
             times.append(training_time)
-    plt.plot(num_layers, final_losses)
-    plt.xlabel('number of layers')
-    plt.ylabel('final loss')
-    plt.title('Final loss after 75 epochs for a 4 qubit system')
-    plt.savefig('./plots/final_loss.png')
-    plt.cla()
-    plt.plot(num_layers, times)
-    plt.xlabel('number of layers')
-    plt.ylabel('runtime [s]')
-    plt.title('Run time of 75 epochs for a 4 qubit system')
-    plt.savefig('./plots/runtime.png')
-    plt.cla()
+        plt.plot(num_layers, min_losses)
+        plt.xlabel('number of layers')
+        plt.ylabel('min loss')
+        plt.title(f'Minimal loss in {num_epochs} epochs for a {qbit} qubit system')
+        plt.savefig('./plots/minimal_loss.png')
+        plt.cla()
+        plt.plot(num_layers, times)
+        plt.xlabel('number of layers')
+        plt.ylabel('runtime [s]')
+        plt.title(f'Run time of {num_epochs} epochs for a {qbit} qubit system')
+        plt.savefig('./plots/runtime.png')
+        plt.cla()
+
+
+def plot_runtime_to_schmidt_rank():
+    num_layers = [1, 2, 4]
+    qbits = [2]
+    num_epochs = 200
+    for qbit in qbits:
+        schmidt_rank = [2**i for i in range(qbit+1)]
+        num_points = 2**(qbit+1)
+        times_r = []
+        min_losses_r = []
+        losses_r = []
+        for r in schmidt_rank:
+            min_losses = []
+            times = []
+            losses_layer = []
+            for num_layer in num_layers:
+                training_time, losses = init(num_layer, qbit, r, num_points, num_epochs)
+                losses_layer.append(losses)
+                print(f"Training with {qbit} qubits and {num_layer} layers took {training_time}s")
+                min_losses.append(np.array(losses).min())
+                times.append(training_time)
+            losses_r.append(losses_layer)
+            min_losses_r.append(min_losses)
+            times_r.append(times)
+
+        plot_loss(losses_r, qbit, num_layers, num_points, schmidt_rank)
+
+        for i in range(len(schmidt_rank)):
+            r = schmidt_rank[i]
+            min_losses = min_losses_r[i]
+            plt.plot(num_layers, min_losses, label=f"r={r}")
+        plt.legend()
+        plt.xlabel('number of layers')
+        plt.ylabel('min loss')
+        plt.title(f'Minimal loss in {num_epochs} epochs for a {qbit} qubit system')
+        plt.savefig(f'./plots/minimal_loss_{qbit}_qbits_{num_epochs}_epochs.png')
+        plt.cla()
+        for i in range(len(schmidt_rank)):
+            r = schmidt_rank[i]
+            times = times_r[i]
+            plt.plot(num_layers, times, label=f"r={r}")
+        plt.legend()
+        plt.xlabel('number of layers')
+        plt.ylabel('runtime [s]')
+        plt.title(f'Run time of {num_epochs} epochs for a {qbit} qubit system')
+        plt.savefig(f'./plots/runtime_{qbit}_qbits_{num_epochs}_epochs.png')
+        plt.cla()
+
+
+def main():
+    plot_runtime_to_schmidt_rank()
 
 
 if __name__ == '__main__':
