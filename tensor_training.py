@@ -142,7 +142,7 @@ def plot_runtime_to_schmidt_rank():
         min_losses_r = []
         losses_r = []
         for j in range(len(schmidt_rank)):
-            r = schmidt_rank[r]
+            r = schmidt_rank[j]
             min_losses = []
             times = []
             losses_layer = []
