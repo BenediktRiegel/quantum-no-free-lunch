@@ -131,23 +131,27 @@ def plot_runtime_to_num_layers():
 
 
 def plot_runtime_to_schmidt_rank():
-    num_layers = [1] + list(range(5, 100, 5))
-    qbits = [4]
+    num_layers = [1, 5] + list(range(10, 100, 10))
+    qbits = [5]
     num_epochs = 200
-    for qbit in qbits:
+    for i in range(len(qbits)):
+        qbit = qbits[i]
         schmidt_rank = [2**i for i in range(qbit+1)]
         num_points = 2**(qbit+1)
         times_r = []
         min_losses_r = []
         losses_r = []
-        for r in schmidt_rank:
+        for j in range(len(schmidt_rank)):
+            r = schmidt_rank[r]
             min_losses = []
             times = []
             losses_layer = []
-            for num_layer in num_layers:
+            for k in range(len(num_layers)):
+                num_layer = num_layers[k]
+                print(f"Start training: qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(schmidt_rank)}], layers [{k+1}/{len(num_layers)}]")
                 training_time, losses = init(num_layer, qbit, r, num_points, num_epochs)
                 losses_layer.append(losses)
-                print(f"Training with {qbit} qubits and {num_layer} layers took {training_time}s")
+                print(f"Training with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s")
                 min_losses.append(np.array(losses).min())
                 times.append(training_time)
             losses_r.append(losses_layer)
