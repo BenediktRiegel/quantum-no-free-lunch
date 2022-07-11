@@ -68,22 +68,25 @@ def torch_tensor_product(matrix1: torch.Tensor, matrix2: torch.Tensor, device='c
 
 
 # Return a randomly uniformly sampled point with schmidt rank <schmid_rank> and size x_qbits+r_qbits
-def uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits):
+def uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits, r_first=False):
     basis_x = uniformly_sample_from_base(x_qbits, schmidt_rank)
     basis_r = uniformly_sample_from_base(r_qbits, schmidt_rank)
     coeff = np.random.uniform(size=schmidt_rank)
     point = np.zeros((2**x_qbits * 2**r_qbits), dtype=np.complex128)
     for i in range(schmidt_rank):
-        point += coeff[i] * tensor_product(basis_x[i], basis_r[i])
+        if r_first:
+            point += coeff[i] * tensor_product(basis_r[i], basis_x[i])
+        else:
+            point += coeff[i] * tensor_product(basis_x[i], basis_r[i])
     return normalize(point)
 
 
 # create dataset of size <size> with a given schmidt rank
-def uniform_random_data(schmidt_rank: int, size: int, x_qbits: int, r_qbits: int) -> List[List[float]]:
+def uniform_random_data(schmidt_rank: int, size: int, x_qbits: int, r_qbits: int, r_first=False) -> List[List[float]]:
     data = []
     # size = number data samples of trainset
     for i in range(size):
-        data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits))
+        data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits, r_first=r_first))
     return data
 
 
