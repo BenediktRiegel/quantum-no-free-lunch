@@ -65,20 +65,23 @@ def cost_func(X, y_conj, qnn):
     return 1 - cost
 
 
-def train(X, y_conj, qnn, num_epochs, optimizer):
+def train(X, y_conj, qnn, num_epochs, optimizer, scheduler=None):
     losses = []
     for i in range(num_epochs):
         loss = cost_func(X, y_conj, qnn)
         losses.append(loss.item())
-        # if i % 20 == 0:
-        #     print(f"epoch [{i+1}/{num_epochs}] loss={loss.item()}")
+        if i % 100 == 0:
+            print(f"epoch [{i+1}/{num_epochs}] loss={loss.item()}")
         if loss.item() == 0.0:
             # print(f"epoch [{i+1}/{num_epochs}] loss={loss.item()}\nstopped")
             break
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    print(f"epoch [{num_epochs}/{num_epochs}] final loss {losses[-1]}")
+        if i % 100 == 0 and scheduler is not None:
+            scheduler.step()
+            print(f"epoch [{i+1}/{num_epochs}] lr={scheduler.get_lr()}")
+    print(f"\tepoch [{num_epochs}/{num_epochs}] final loss {losses[-1]}")
     return losses
 
 
@@ -89,13 +92,13 @@ def I(size):
     return matrix
 
 
-def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs):
+def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr):
+    starting_time = time.time()
     x_qbits = num_qbits
     r_qbits = int(np.ceil(np.log2(schmidt_rank)))
     x_wires = list(range(num_qbits))
     qnn = PennylaneQNN(wires=x_wires, num_layers=num_layers, use_torch=True)
 
-    print('prep')
     X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits, r_first=True)))
     U = random_unitary_matrix(x_qbits)
     # U = qnn.get_matrix_V()
@@ -107,14 +110,18 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs):
     # (U*X.T).T gives us y, as row vectors and (U*X.T).T = X*U.T
     y_conj = quick_matmulmat(X, torch.from_numpy(U.T)).conj()
 
-    optimizer = torch.optim.Adam([qnn.params], lr=0.1)
+    optimizer = torch.optim.SGD([qnn.params], lr=lr)
+    scheduler = None
+    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
+    prep_time = time.time() - starting_time
+    print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
 
     starting_time = time.time()
-    losses = train(X, y_conj, qnn, num_epochs, optimizer)
-    total_time = time.time() - starting_time
+    losses = train(X, y_conj, qnn, num_epochs, optimizer, scheduler)
+    train_time = time.time() - starting_time
 
-    print(f"risk = {quantum_risk(U, qnn.get_matrix_V())}")
-    return total_time, losses
+    print(f"\trisk = {quantum_risk(U, qnn.get_matrix_V())}")
+    return train_time, prep_time, losses
 
 
 def plot_runtime_to_num_layers():
@@ -131,7 +138,7 @@ def plot_runtime_to_num_layers():
     times = []
     for qbit in qbits:
         for num_layer in num_layers:
-            training_time, losses = init(num_layer, qbit, 1, num_points, num_epochs)
+            training_time, prep_time, losses = init(num_layer, qbit, 1, num_points, num_epochs, 0.1)
             plot_loss(losses, qbit, num_layer, num_points, schmidt_rank)
             print(f"Training with {qbit} qubits and {num_layer} layers took {training_time}s")
             min_losses.append(np.array(losses).min())
@@ -151,32 +158,38 @@ def plot_runtime_to_num_layers():
 
 
 def plot_runtime_to_schmidt_rank():
-    num_layers = [1] + list(range(5, 20, 5))
-    qbits = [2]
-    num_epochs = 200
+    # num_layers = [1] + list(range(5, 20, 5))
+    num_layers = [25]
+    qbits = [4]
+    num_epochs = 1000
+    lr = 1
     for i in range(len(qbits)):
         qbit = qbits[i]
         schmidt_rank = [2**i for i in range(qbit+1)]
         num_points = 2**(qbit+1)
-        times_r = []
+        train_times_r = []
+        prep_times_r = []
         min_losses_r = []
         losses_r = []
         for j in range(len(schmidt_rank)):
             r = schmidt_rank[j]
             min_losses = []
-            times = []
+            train_times = []
+            prep_times = []
             losses_layer = []
             for k in range(len(num_layers)):
                 num_layer = num_layers[k]
-                print(f"Start training: qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(schmidt_rank)}], layers [{k+1}/{len(num_layers)}]")
-                training_time, losses = init(num_layer, qbit, r, num_points, num_epochs)
+                print(f"\nStart training: qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(schmidt_rank)}], layers [{k+1}/{len(num_layers)}]")
+                training_time, prep_time, losses = init(num_layer, qbit, r, num_points, num_epochs, lr)
                 losses_layer.append(losses)
-                print(f"Training with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s")
+                print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
                 min_losses.append(np.array(losses).min())
-                times.append(training_time)
+                train_times.append(training_time)
+                prep_times.append(prep_time)
             losses_r.append(losses_layer)
             min_losses_r.append(min_losses)
-            times_r.append(times)
+            train_times_r.append(train_times)
+            prep_times_r.append(prep_times)
 
         plot_loss(losses_r, qbit, num_layers, num_points, schmidt_rank)
 
@@ -188,17 +201,29 @@ def plot_runtime_to_schmidt_rank():
         plt.xlabel('number of layers')
         plt.ylabel('min loss')
         plt.title(f'Minimal loss in {num_epochs} epochs for a {qbit} qubit system')
-        plt.savefig(f'./plots/minimal_loss_{qbit}_qbits_{num_epochs}_epochs.png')
+        plt.savefig(f'./plots/minimal_loss_{qbit}_qbits_{num_epochs}_epochs_lr={lr}.png')
         plt.cla()
+
         for i in range(len(schmidt_rank)):
             r = schmidt_rank[i]
-            times = times_r[i]
+            times = train_times_r[i]
             plt.plot(num_layers, times, label=f"r={r}")
         plt.legend()
         plt.xlabel('number of layers')
-        plt.ylabel('runtime [s]')
-        plt.title(f'Run time of {num_epochs} epochs for a {qbit} qubit system')
-        plt.savefig(f'./plots/runtime_{qbit}_qbits_{num_epochs}_epochs.png')
+        plt.ylabel('Time for Training [s]')
+        plt.title(f'Time for Training for {num_epochs} epochs for a {qbit} qubit system')
+        plt.savefig(f'./plots/train_time_{qbit}_qbits_{num_epochs}_epochs_lr={lr}.png')
+        plt.cla()
+
+        for i in range(len(schmidt_rank)):
+            r = schmidt_rank[i]
+            times = prep_times_r[i]
+            plt.plot(num_layers, times, label=f"r={r}")
+        plt.legend()
+        plt.xlabel('Number of Layers')
+        plt.ylabel('Time for Preparations [s]')
+        plt.title(f'Time for Preparations for a {qbit} qubit system')
+        plt.savefig(f'./plots/prep_time_{qbit}_qbits_lr={lr}.png')
         plt.cla()
 
 
