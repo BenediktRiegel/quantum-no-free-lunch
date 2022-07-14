@@ -138,7 +138,8 @@ def plot_runtime_to_schmidt_rank():
     qbits = [4]
     num_epochs = 200
     lr = 0.1
-    qnn = 'Circuit6QNN'
+    # qnn = 'Circuit6QNN'
+    qnn = 'PennylaneQNN'
     opt_name = 'Adam'
     for i in range(len(qbits)):
         qbit = qbits[i]
