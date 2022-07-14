@@ -227,8 +227,22 @@ def plot_runtime_to_schmidt_rank():
         plt.cla()
 
 
+def rough_train_time_requirements(exp_duration_s=0, exp_duration_min=0, exp_duration_hour=0, exp_duration_day=0):
+    exp_time = 0
+    exp_time += exp_duration_s
+    exp_time += exp_duration_min*60
+    exp_time += exp_duration_hour*60*60
+    exp_time += exp_duration_day*60*60*24
+    print(exp_time)
+
+    # exp_time = t*num_epochs*7*10*100   #schimdrank*uniatires*datasets
+    train_time = exp_time/7000.
+    print(f"training may take up to {train_time}s")
+
+
 def main():
-    plot_runtime_to_schmidt_rank()
+    # plot_runtime_to_schmidt_rank()
+    rough_train_time_requirements(0, 0, 0, 4)
 
 
 if __name__ == '__main__':
