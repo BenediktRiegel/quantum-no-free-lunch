@@ -19,11 +19,11 @@ def calc_risk_qnn(trained_qnn, U):
     return risk
 
 
-def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
+def calc_avg_std_risk(schmidt_rank, num_points, x_qbits, r_qbits,
                   num_unitaries, num_layers, num_training_data,
                   learning_rate, num_epochs, batch_size, mean_std, std, logger: Logger,
                   qnn=None):
-    sum_risk = 0
+    all_risks = []
     for i in range(num_unitaries):
         # Draw random unitary
         logger.update_num_unitary(i)
@@ -52,14 +52,14 @@ def calc_avg_risk(schmidt_rank, num_points, x_qbits, r_qbits,
             # plt.plot(list(range(len(losses))), losses)
             print('calculating risk')
             risk = calc_risk_qnn(qnn, unitary)
-            sum_risk += risk
+            all_risks.append(risk)
     # plt.grid(True)
     # plt.show()
 
     #average over all unitaries and training sets
     print('average risk')
-    average_risk = sum_risk/(num_unitaries * num_training_data)
-    return average_risk
+    all_risks = np.array(all_risks)
+    return all_risks.mean(), all_risks.std()
 
 
 def main():
