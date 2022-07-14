@@ -1,5 +1,5 @@
 from config import gen_config
-from test import calc_avg_risk
+from test import calc_avg_std_risk
 import json
 import numpy as np
 from log import Logger
@@ -66,7 +66,7 @@ def exp_fig2_3(config, save_dir):
         for num_points in range(1, config['num_points'] + 1):
             logger.update_num_points(num_points)
             # print(f"num_points {num_points}/{config['num_points']}")
-            risk = calc_avg_risk(rank, num_points, config['x_qbits'],
+            risk, std = calc_avg_std_risk(rank, num_points, config['x_qbits'],
                                  r_qbits, config['num_unitaries'],
                                  config['num_layers'], config['num_training_data'],
                                  config['learning_rate'], config['num_epochs'],
@@ -75,8 +75,8 @@ def exp_fig2_3(config, save_dir):
                                  logger
                                  )
             # Store risks directly
-            writer.append(risk)
-            risk_list.append(risk)
+            writer.append(f"{risk},{std}")
+            risk_list.append([risk, std])
         all_risks.append(risk_list)
     all_risks_array = np.array(all_risks)
 
@@ -166,7 +166,7 @@ def test_simple_mean_std(upper_std):
     for std in range(0, upper_std):
         #logger.update_num_points(num_points)
         # print(f"num_points {num_points}/{config['num_points']}")
-        risk = calc_avg_risk(config['rank'], config['num_points'], config['x_qbits'],
+        risk, _ = calc_avg_std_risk(config['rank'], config['num_points'], config['x_qbits'],
                                 config['r_qbits'], config['num_unitaries'],
                                 config['num_layers'], config['num_training_data'],
                                 config['learning_rate'], config['num_epochs'],
@@ -213,7 +213,7 @@ def test_mean_std():
         for num_points in range(1, config['num_points'] + 1):
             #logger.update_num_points(num_points)
             # print(f"num_points {num_points}/{config['num_points']}")
-            risk = calc_avg_risk(config['rank'], config['num_points'], config['x_qbits'],
+            risk, _ = calc_avg_std_risk(config['rank'], config['num_points'], config['x_qbits'],
                                  config['r_qbits'], config['num_unitaries'],
                                  config['num_layers'], config['num_training_data'],
                                  config['learning_rate'], config['num_epochs'],
