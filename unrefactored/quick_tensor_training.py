@@ -37,7 +37,7 @@ def plot_loss(losses, num_qbits, num_layers, num_points, r_list, name_addition='
 
 
 def quick_matmulvec(M, vec):
-    size = M.shape[0]
+    size = M.shape[0] #quadratic, no care
     result = torch.zeros(vec.shape, dtype=torch.complex128)
     for i in range(0, vec.shape[0], size):
         result[i:i+size] = torch.matmul(M, vec[i:i+size])
@@ -45,8 +45,11 @@ def quick_matmulvec(M, vec):
 
 
 def quick_matmulmat(A, B):
-    size = B.shape[0]
-    result = torch.zeros(A.shape, dtype=torch.complex128)
+    """
+    To do: A*(IxB) = X*(IxU.T)
+    """
+    size = B.shape[0]   # 2**x_qbit in case B=U.T
+    result = torch.zeros(A.shape, dtype=torch.complex128)   # Size of X in case A=X
     for i in range(0, A.shape[0], size):
         for j in range(0, A.shape[1], size):
             result[i:i+size, j:j+size] = torch.matmul(A[i:i+size, j:j+size], B)
@@ -93,11 +96,18 @@ def I(size):
 
 
 def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_name, opt_name='Adam'):
+    """
+    Tensor trainign for QNN
+    """
     starting_time = time.time()
     x_qbits = num_qbits
-    r_qbits = int(np.ceil(np.log2(schmidt_rank)))
-    x_wires = list(range(num_qbits))
+    r_qbits = int(np.ceil(np.log2(schmidt_rank)))  # dont use all qubits for reference system
+    x_wires = list(range(num_qbits))  # does not matter which qubits we are using, since we only want the matrix
+
+    #construct QNNobject from qnn_name string
     qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers, use_torch=True)
+
+
 
     X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits, r_first=True)))
     U = random_unitary_matrix(x_qbits)
@@ -108,6 +118,8 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
     # X[i, :] is the i'th input => X contains them in as row vectors
     # U*X.T gives us y, but as column vectors
     # (U*X.T).T gives us y, as row vectors and (U*X.T).T = X*U.T
+
+
     y_conj = quick_matmulmat(X, torch.from_numpy(U.T)).conj()
 
     if opt_name.lower() == 'sgd':
