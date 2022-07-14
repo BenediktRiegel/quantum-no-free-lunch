@@ -157,8 +157,10 @@ class Circuit6QNN(QNN):
 
     def init_params(self):
         # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        # wall_params = |wires| x |layers| x 4
+        # cnot_params = |layers| x |wires|*(|wires|-1)
         if self.use_torch:
-            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 2))
+            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 4))
             cnot_params = np.random.normal(0, np.pi, (self.num_layers, len(self.wires)*(len(self.wires)-1)))
             wall_params = Variable(torch.tensor(wall_params), requires_grad=True)
             cnot_params = Variable(torch.tensor(cnot_params), requires_grad=True)
@@ -179,9 +181,12 @@ class Circuit6QNN(QNN):
         for i in range(len(self.wires)):
             qml.RX(self.params[0][i, layer_num, 0], wires=self.wires[i])
             qml.RZ(self.params[0][i, layer_num, 1], wires=self.wires[i])
-            self.entanglement(layer_num)
-            qml.RZ(self.params[0][i, layer_num, 2], wires=self.wires[i])
-            qml.RX(self.params[0][i, layer_num, 3], wires=self.wires[i])
+
+        self.entanglement(layer_num)
+
+        for i in range(len(self.wires)):
+            qml.RX(self.params[0][i, layer_num, 2], wires=self.wires[i])
+            qml.RZ(self.params[0][i, layer_num, 3], wires=self.wires[i])
 
         self.entanglement(layer_num)
 
