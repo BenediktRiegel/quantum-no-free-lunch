@@ -4,9 +4,11 @@ This package uses Pennylane.
 
 
 ## To do:
-- Optimize number of reference qbits (r_qbits  $=\lceil log_2 r\rceil$, where $r$ is max. Schmidt rank in the training set)
+- Test different qnns
 - Test different learning rates
 - Test different termination conditions (max steps, low cost,...)
+- 2 qubit unitary expirement on real quantum computer
+- Heatmap for 2 variable parameters (all others fixed) and loss as heatmap value
 
 ## Experiments
 - Reproduce Figure 2 and Figure 3:
