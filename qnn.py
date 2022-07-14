@@ -151,6 +151,45 @@ class OffsetQNN(QNN):
             self.layer(j)
 
 
+class Circuit6QNN(QNN):
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
+        super(Circuit6QNN, self).__init__(wires, num_layers, use_torch, device)
+
+    def init_params(self):
+        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        if self.use_torch:
+            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 2))
+            cnot_params = np.random.normal(0, np.pi, (self.num_layers, len(self.wires)*(len(self.wires)-1)))
+            wall_params = Variable(torch.tensor(wall_params), requires_grad=True)
+            cnot_params = Variable(torch.tensor(cnot_params), requires_grad=True)
+        else:
+            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 4))
+            cnot_params = np.random.normal(0, np.pi, (self.num_layers, len(self.wires) * (len(self.wires) - 1)))
+        return [wall_params, cnot_params]
+
+    def entanglement(self, num_layer):
+        idx = 0
+        for c_wire in self.wires:
+            for t_wire in self.wires:
+                if c_wire != t_wire:
+                    qml.CRX(self.params[1][num_layer][idx], wires=(c_wire, t_wire))
+                    idx += 1
+
+    def layer(self, layer_num):
+        for i in range(len(self.wires)):
+            qml.RX(self.params[0][i, layer_num, 0], wires=self.wires[i])
+            qml.RZ(self.params[0][i, layer_num, 1], wires=self.wires[i])
+            self.entanglement(layer_num)
+            qml.RZ(self.params[0][i, layer_num, 2], wires=self.wires[i])
+            qml.RX(self.params[0][i, layer_num, 3], wires=self.wires[i])
+
+        self.entanglement(layer_num)
+
+    def qnn(self):
+        for j in range(self.num_layers):
+            self.layer(j)
+
+
 def get_density_matrix(qstate):
     qstate = np.array(qstate)
     return np.outer(qstate, qstate.conj())
