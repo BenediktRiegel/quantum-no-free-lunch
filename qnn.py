@@ -295,32 +295,32 @@ class Circuit9QNN(QNN):
     def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
             super(Circuit9QNN, self).__init__(wires, num_layers, use_torch, device)
 
-        def init_params(self):
-            # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
-            if self.use_torch:
-                params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 1))
-                return Variable(torch.tensor(params), requires_grad=True)
-            else:
-                return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 1))
+    def init_params(self):
+        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        if self.use_torch:
+            params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 1))
+            return Variable(torch.tensor(params), requires_grad=True)
+        else:
+            return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 1))
 
-        def entanglement(self):
-            if len(self.wires) > 1:
-                for i in range(len(self.wires), 0, -1):
-                    c_wire = self.wires[i]
-                    t_i = i-1
-                    t_wire = self.wires[t_i]
-                    qml.CRZ(wires=[c_wire, t_wire])
+    def entanglement(self):
+        if len(self.wires) > 1:
+            for i in range(len(self.wires), 0, -1):
+                c_wire = self.wires[i]
+                t_i = i-1
+                t_wire = self.wires[t_i]
+                qml.CRZ(wires=[c_wire, t_wire])
 
-        def layer(self, layer_num):
-            for i in range(len(self.wires)):
-                qml.Hadamard(wires=self.wires[i])
+    def layer(self, layer_num):
+        for i in range(len(self.wires)):
+            qml.Hadamard(wires=self.wires[i])
 
-            self.entanglement()
+        self.entanglement()
 
-            for i in range(len(self.wires)):
-                qml.RX(self.params[i, layer_num, 0], wires=self.wires[i])
+        for i in range(len(self.wires)):
+            qml.RX(self.params[i, layer_num, 0], wires=self.wires[i])
 
 
-        def qnn(self):
-            for j in range(self.num_layers):
-                self.layer(j)
+    def qnn(self):
+        for j in range(self.num_layers):
+            self.layer(j)
