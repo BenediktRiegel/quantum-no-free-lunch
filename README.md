@@ -3,6 +3,11 @@
 This package uses Pennylane.
 
 
+##Ideen:
+- weight intilization ändern
+- mehr Circuits testen
+- Dynamic Learning Rate 
+
 ## To do:
 - Test different qnns
 - Test different learning rates
