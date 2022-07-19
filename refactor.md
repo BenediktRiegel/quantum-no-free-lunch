@@ -1,7 +1,7 @@
 ## Code Refactoring
 date: 14.07.2022
 
-### qnn.py:
+### qnn.py: erledigt
 - architectures
 
 ### classic_training.py:
