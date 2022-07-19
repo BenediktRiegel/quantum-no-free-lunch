@@ -151,7 +151,97 @@ class OffsetQNN(QNN):
             self.layer(j)
 
 
+class Circuit2QNN(QNN):
+    """
+    Paper Expressibility of QNNs
+    Circuit 2
+    """
+
+
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
+        super(Circuit2QNN, self).__init__(wires, num_layers, use_torch, device)
+
+    def init_params(self):
+        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        if self.use_torch:
+            params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 2))
+            return Variable(torch.tensor(params), requires_grad=True)
+        else:
+            return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 2))
+
+    def entanglement(self):
+        if len(self.wires) > 1:
+            for i in range(len(self.wires), 0, -1):
+                c_wire = self.wires[i]
+                t_i = i-1
+                t_wire = self.wires[t_i]
+                qml.CNOT(wires=[c_wire, t_wire])
+
+    def layer(self, layer_num):
+        for i in range(len(self.wires)):
+            qml.RX(self.params[i, layer_num, 0], wires=self.wires[i])
+            qml.RZ(self.params[i, layer_num, 1], wires=self.wires[i])
+
+        self.entanglement()
+
+    def qnn(self):
+        for j in range(self.num_layers):
+            self.layer(j)
+
+class Circuit5QNN(QNN):
+    """
+    Paper Expressibility of QNNs
+    Circuit 5
+    """
+
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
+        super(Circuit5QNN, self).__init__(wires, num_layers, use_torch, device)
+
+    def init_params(self):
+        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        # wall_params = |wires| x |layers| x 4
+        # cnot_params = |layers| x |wires|*(|wires|-1)
+        if self.use_torch:
+            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 4))
+            cnot_params = np.random.normal(0, np.pi, (self.num_layers, len(self.wires)*(len(self.wires)-1)))
+            wall_params = Variable(torch.tensor(wall_params), requires_grad=True)
+            cnot_params = Variable(torch.tensor(cnot_params), requires_grad=True)
+        else:
+            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 4))
+            cnot_params = np.random.normal(0, np.pi, (self.num_layers, len(self.wires) * (len(self.wires) - 1)))
+        return [wall_params, cnot_params]
+
+    def entanglement(self, num_layer):
+        idx = 0
+        for c_wire in self.wires:
+            for t_wire in self.wires:
+                if c_wire != t_wire:
+                    qml.CRZ(self.params[1][num_layer][idx], wires=(c_wire, t_wire))
+                    idx += 1
+
+    def layer(self, layer_num):
+        for i in range(len(self.wires)):
+            qml.RX(self.params[0][i, layer_num, 0], wires=self.wires[i])
+            qml.RZ(self.params[0][i, layer_num, 1], wires=self.wires[i])
+
+        self.entanglement(layer_num)
+
+        for i in range(len(self.wires)):
+            qml.RX(self.params[0][i, layer_num, 2], wires=self.wires[i])
+            qml.RZ(self.params[0][i, layer_num, 3], wires=self.wires[i])
+
+
+
+    def qnn(self):
+        for j in range(self.num_layers):
+            self.layer(j)
 class Circuit6QNN(QNN):
+    """
+    Paper Expressiblity of QNNs
+    Circuit 6
+    """
+
+
     def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
         super(Circuit6QNN, self).__init__(wires, num_layers, use_torch, device)
 
@@ -188,7 +278,45 @@ class Circuit6QNN(QNN):
             qml.RX(self.params[0][i, layer_num, 2], wires=self.wires[i])
             qml.RZ(self.params[0][i, layer_num, 3], wires=self.wires[i])
 
-        self.entanglement(layer_num)
+
+    def qnn(self):
+        for j in range(self.num_layers):
+            self.layer(j)
+
+class Circuit9QNN(QNN):
+    """
+    Paper Expressibility of QNN
+    Circuit 9
+    """
+
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
+            super(Circuit9QNN, self).__init__(wires, num_layers, use_torch, device)
+
+    def init_params(self):
+        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        if self.use_torch:
+            params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 1))
+            return Variable(torch.tensor(params), requires_grad=True)
+        else:
+            return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 1))
+
+    def entanglement(self):
+        if len(self.wires) > 1:
+            for i in range(len(self.wires), 0, -1):
+                c_wire = self.wires[i]
+                t_i = i-1
+                t_wire = self.wires[t_i]
+                qml.CRZ(wires=[c_wire, t_wire])
+
+    def layer(self, layer_num):
+        for i in range(len(self.wires)):
+            qml.Hadamard(wires=self.wires[i])
+
+        self.entanglement()
+
+        for i in range(len(self.wires)):
+            qml.RX(self.params[i, layer_num, 0], wires=self.wires[i])
+
 
     def qnn(self):
         for j in range(self.num_layers):
