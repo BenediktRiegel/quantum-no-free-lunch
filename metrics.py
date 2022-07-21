@@ -1,11 +1,25 @@
 from qnn import *
-from utils import quantum_risk
 from data import *
 import classic_training
 import quantum_training
 import time
 from logger import Writer
 
+
+def quantum_risk(U, V):
+    """
+    Computes the quantum risk of a hypothesis unitary V
+    with respect to the 'true' unitary U according to
+    Equation A6 in Sharma et al.
+    """
+    dim = len(U)
+    U = np.matrix(U)
+    V = np.matrix(V)
+    prod = np.matmul(U.getH(), V)
+    tr = abs(np.trace(prod))**2
+    risk = 1 - ((dim + tr)/(dim * (dim+1)))
+
+    return risk
 
 
 def calc_risk_qnn(trained_qnn, U):
