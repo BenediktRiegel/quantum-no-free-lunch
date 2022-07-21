@@ -95,6 +95,7 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
         optimizer = optimizer([qnn.params], lr=lr)
     scheduler = None
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
+    torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
     prep_time = time.time() - starting_time
     print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
 
