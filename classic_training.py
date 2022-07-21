@@ -57,9 +57,14 @@ def train(X, y_conj, qnn, num_epochs, optimizer, scheduler=None):
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        if scheduler is not None:
+            scheduler.step(loss.item())
+            print(f"\tepoch [{i + 1}/{num_epochs}] lr={scheduler.get_lr()}")
+        """
         if i % 100 == 0 and scheduler is not None:
             scheduler.step(loss.item())
             print(f"\tepoch [{i+1}/{num_epochs}] lr={scheduler.get_lr()}")
+        """
     print(f"\tepoch [{num_epochs}/{num_epochs}] final loss {losses[-1]}")
     return losses
 
