@@ -174,7 +174,7 @@ class Circuit2QNN(QNN):
 
     def entanglement(self):
         if len(self.wires) > 1:
-            for i in range(len(self.wires), 0, -1):
+            for i in range(len(self.wires)-1, 0, -1):
                 c_wire = self.wires[i]
                 t_i = i-1
                 t_wire = self.wires[t_i]
@@ -233,17 +233,16 @@ class Circuit5QNN(QNN):
             qml.RX(self.params[0][i, layer_num, 2], wires=self.wires[i])
             qml.RZ(self.params[0][i, layer_num, 3], wires=self.wires[i])
 
-
-
     def qnn(self):
         for j in range(self.num_layers):
             self.layer(j)
+
+
 class Circuit6QNN(QNN):
     """
     Paper Expressiblity of QNNs
     Circuit 6
     """
-
 
     def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
         super(Circuit6QNN, self).__init__(wires, num_layers, use_torch, device)
@@ -305,7 +304,7 @@ class Circuit9QNN(QNN):
 
     def entanglement(self):
         if len(self.wires) > 1:
-            for i in range(len(self.wires), 0, -1):
+            for i in range(len(self.wires)-1, 0, -1):
                 c_wire = self.wires[i]
                 t_i = i-1
                 t_wire = self.wires[t_i]
