@@ -46,8 +46,6 @@ def exp_basis_sharma(config, save_dir):
     np.save(save_dir + 'result.npy', all_risks_array)
 
 
-
-
 def test_fig2():
     """
     This method generates results for Figure 2 in Sharma et al.
@@ -56,7 +54,8 @@ def test_fig2():
     #Fig.2 Paper Sharma et al.
     config = get_exp_one_qubit_unitary_config()
     print("config generated")
-    exp_fig2_3(config, './experimental_results/exp1/')
+    exp_basis_sharma(config, './experimental_results/exp1/')
+
 
 def test_fig3():
     """
@@ -69,7 +68,7 @@ def test_fig3():
     print("config generated")
 
     # small test version
-    exp_fig2_3(config, './experimental_results/exp2/')
+    exp_basis_sharma(config, './experimental_results/exp2/')
 
 
 def test_simple_mean_std(upper_std):
@@ -110,6 +109,7 @@ def test_simple_mean_std(upper_std):
 
     # store risks
     np.save(save_dir + 'result.npy', all_risks_array)
+
 
 def test_mean_std():
     #create more exhaustive experiment for mean and std
@@ -159,9 +159,76 @@ def test_mean_std():
     np.save(save_dir + 'result.npy', all_risks_array)
 
 
+def three_qubits_exp():
+    import torch
+    import time
+    from data import random_unitary_matrix, uniform_random_data
+    import importlib
+    from classic_training import train
+    from metrics import quantum_risk
+    import matplotlib.pyplot as plt
+
+    starting_time = time.time()
+    x_qbits = 1
+    num_layers = 10
+    num_epochs = 100
+    lr = 0.1
+    r_list = list(range(x_qbits+1))
+    num_unitaries = 5
+    num_datasets = 5
+    num_datapoints = list(range(1, 2**x_qbits + 1))
+    qnn_name = 'PennylaneQNN'
+
+    results = dict()
+    for r_idx in range(len(r_list)):
+        schmidt_rank = 2**r_list[r_idx]
+        results[r_list[r_idx]] = [1]
+        for num_points_idx in range(len(num_datapoints)):
+            num_points = num_datapoints[num_points_idx]
+            risks = []
+            for unitary_idx in range(num_unitaries):
+                U = random_unitary_matrix(x_qbits)
+                for dataset_idx in range(num_datasets):
+                    print(f"Run: r [{r_idx+1}/{len(r_list)}], no. points [{num_points_idx+1}/{len(num_datapoints)}], "
+                          f"U [{unitary_idx+1}/{num_unitaries}], dataset [{dataset_idx+1}/{num_datasets}]")
+
+                    r_qbits = int(np.ceil(np.log2(schmidt_rank)))
+
+                    x_wires = list(range(x_qbits))
+                    qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers, use_torch=True)
+
+                    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+
+                    optimizer = torch.optim.Adam
+
+                    if isinstance(qnn.params, list):
+                        optimizer = optimizer(qnn.params, lr=lr)
+                    else:
+                        optimizer = optimizer([qnn.params], lr=lr)
+                    scheduler = None
+                    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
+                    torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
+                    prep_time = time.time() - starting_time
+                    print(f"\tPreparation with {x_qbits} qubits and {num_layers} layers took {prep_time}s")
+
+                    starting_time = time.time()
+                    losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
+                    train_time = time.time() - starting_time
+
+                    risks.append(quantum_risk(U, qnn.get_matrix_V()))
+            risks = np.array(risks)
+            results[r_list[r_idx]].append(risks.mean())
+
+    for r_idx in range(len(r_list)):
+        plt.plot([0] + num_datapoints, results[r_list[r_idx]], label=f'r={r_list[r_idx]}', marker='.')
+    plt.xlabel('No. of Datapoints')
+    plt.ylabel('Average Risk')
+    plt.legend()
+    plt.title('Average Risk for 3 Qubit Unitary')
+    plt.tight_layout()
+    plt.savefig('./plots/three_qubit_exp.png')
+    plt.cla()
 
 
-
-
-
-
+if __name__ == '__main__':
+    three_qubits_exp()
