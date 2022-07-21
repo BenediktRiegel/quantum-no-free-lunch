@@ -324,3 +324,5 @@ class Circuit9QNN(QNN):
     def qnn(self):
         for j in range(self.num_layers):
             self.layer(j)
+
+
