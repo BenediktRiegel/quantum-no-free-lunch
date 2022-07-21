@@ -168,7 +168,7 @@ def x_qubits_exp(x_qbits):
     from metrics import quantum_risk
     import matplotlib.pyplot as plt
 
-    starting_time = time.time()
+    complete_starting_time = time.time()
     num_layers = 10
     num_epochs = 100
     lr = 0.1
@@ -217,6 +217,8 @@ def x_qubits_exp(x_qbits):
                     risks.append(quantum_risk(U, qnn.get_matrix_V()))
             risks = np.array(risks)
             results[r_list[r_idx]].append(risks.mean())
+    complete_total_time = time.time() - complete_starting_time
+    print(f'experiment execution took {complete_total_time}s')
 
     for r_idx in range(len(r_list)):
         plt.plot([0] + num_datapoints, results[r_list[r_idx]], label=f'r={r_list[r_idx]}', marker='.')
