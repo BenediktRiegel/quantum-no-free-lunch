@@ -68,7 +68,7 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
     print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
 
     starting_time = time.time()
-    losses = train(X, y_conj, qnn, num_epochs, optimizer, scheduler)
+    losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
     train_time = time.time() - starting_time
 
     print(f"\trisk = {quantum_risk(U, qnn.get_matrix_V())}")
@@ -147,23 +147,23 @@ def plot_runtime_to_schmidt_rank():
                 train_times_r.append(train_times)
                 prep_times_r.append(prep_times)
 
-                qnn_losses.append((qnn, r, min_losses))
-                qnn_times.append((qnn, r, train_times))
+                qnn_losses.append((qnn, r, num_points, min_losses))
+                qnn_times.append((qnn, r, num_points, train_times))
 
         # plot_loss(losses_r, qbit, num_layers, num_points, r_list, name_addition=f"_{num_epochs}_epochs_lr={lr}_{qnn}")
     for i in range(len(qnn_losses)):
-        qnn, r, loss = qnn_losses[i]
-        plt.plot(range(len(loss)), loss, label=f"{qnn}, r={r}")
+        qnn, r, d, loss = qnn_losses[i]
+        plt.plot(num_layers, loss, label=f"{qnn}, r={r}, d={d}")
     plt.legend()
-    plt.xlabel('num_layers')
+    plt.xlabel('number of layers')
     plt.ylabel('min loss')
     plt.savefig('./plots/qnn_min_loss.png')
     plt.cla()
     for i in range(len(qnn_times)):
-        qnn, r, time = qnn_times[i]
-        plt.plot(range(len(time)), time, label=f"{qnn}, r={r}")
+        qnn, r, d, time = qnn_times[i]
+        plt.plot(num_layers, time, label=f"{qnn}, r={r}, d={d}")
     plt.legend()
-    plt.xlabel('num_layers')
+    plt.xlabel('number of layers')
     plt.ylabel('time in s')
     plt.savefig('./plots/qnn_time.png')
     plt.cla()
