@@ -36,7 +36,7 @@ def uniformly_sample_from_base(num_qbits: int, size: int):
 
     return np.array(base) @ transform_matrix
 
-def uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits, r_first=False):
+def uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits):
     """
     Generates a random point with a specified schmidt rank by drawing basis vectors corresponding
     to the schmidt rank and 'pairing' them in a linear combination of elementary tensors
@@ -47,24 +47,18 @@ def uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits, r_first=False)
         determines how many basis vectors are drawn for the circuit and the reference system
     x_qbits, r_qbits: int
         specify the amount of qubits in the circuit and reference system
-    r_first : bool
-        specify ordering of basis vectors in linear combination (circuit basis
-        vectors appear before reference basis vectors by default)
     """
     basis_x = uniformly_sample_from_base(x_qbits, schmidt_rank)
     basis_r = uniformly_sample_from_base(r_qbits, schmidt_rank)
     coeff = np.random.uniform(size=schmidt_rank)
     point = np.zeros((2**x_qbits * 2**r_qbits), dtype=np.complex128)
     for i in range(schmidt_rank):
-        if r_first:
-            point += coeff[i] * tensor_product(basis_r[i], basis_x[i])
-        else:
-            point += coeff[i] * tensor_product(basis_x[i], basis_r[i])
+        point += coeff[i] * tensor_product(basis_r[i], basis_x[i])
     return normalize(point)
 
 
 
-def uniform_random_data(schmidt_rank: int, size: int, x_qbits: int, r_qbits: int, r_first=False) -> List[List[float]]:
+def uniform_random_data(schmidt_rank: int, size: int, x_qbits: int, r_qbits: int) -> List[List[float]]:
     """
     Generates a data set of specified size with a given schmidt rank by drawing points
     with uniformly_sample_random_point
@@ -77,14 +71,11 @@ def uniform_random_data(schmidt_rank: int, size: int, x_qbits: int, r_qbits: int
         Desired size of the data set (number of points)
     x_qbits, r_qbits : int
         Desired input size of the circuit and reference system
-    r_first : bool
-        specify ordering of basis vectors in linear combination (circuit basis
-        vectors appear before reference basis vectors by default)
     """
     data = []
     # size = number data samples of trainset
     for i in range(size):
-        data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits, r_first=r_first))
+        data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits))
     return data
 
 
@@ -146,7 +137,7 @@ def create_mean_std(mean, std, num_samples, max_rank, counter):
 
 
 #create dataset of size <size> with a mean schmidt rank
-def uniform_random_data_mean(mean, std, num_samples, x_qbits, r_qbits, r_first=False):
+def uniform_random_data_mean(mean, std, num_samples, x_qbits, r_qbits):
     """
     Create dataset of specified size with variable Schmidt rank with certain mean and standard
     deviation
@@ -161,10 +152,10 @@ def uniform_random_data_mean(mean, std, num_samples, x_qbits, r_qbits, r_first=F
         Desired input size of circuit and reference system
     """
     data = []
-    numbers_mean_std, counter = create_mean_std(mean,std, num_samples)
+    numbers_mean_std, counter = create_mean_std(mean, std, num_samples)
     for i in range(len(numbers_mean_std)):
         schmidt_rank = numbers_mean_std[i]
-        data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits, r_first=r_first))
+        data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits))
     return data
 
 
@@ -183,7 +174,6 @@ def random_unitary_matrix(x_qbits):
 
 
 class SchmidtDataset(torch.utils.data.Dataset):
-    from utils import uniform_random_data
     def __init__(self, schmidt_rank, num_points, x_qbits, r_qbits):
         # Initialize the data and label list
         self.data = uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)
@@ -199,7 +189,6 @@ class SchmidtDataset(torch.utils.data.Dataset):
 
 
 class SchmidtDataset_std(torch.utils.data.Dataset):
-    from utils import uniform_random_data
     def __init__(self, schmidt_rank, num_points, x_qbits, r_qbits, std):
         # Initialize the data and label list
         self.data = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits)
