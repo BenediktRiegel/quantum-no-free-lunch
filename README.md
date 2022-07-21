@@ -2,11 +2,11 @@
 
 This package uses Pennylane.
 
-## Momentane Erxperiment:
+## Momentane Erxperiment: weight initalization ist jetzt bei allen drinnen
 1. 25-50 layer für alle netze, für max. schmidt rank auf 64 samples
-2. 1-25 layer für alle netze, für max. schimdt rank auf 64 samples
-3. 25-50 layer für alle netze, für max. schmidt rank auf 64 samples und ReduceLRonPlateau
-
+2. 25-50 layer für alle netze, für max. schimdt rank auf 64 samples und ReduceLRonPlateau
+3. 50-200 layer für alle netze, für max. schmidt rank auf 64 samples und ReduceLRonPlateau
+4. Fig3. auf 4 Qbutis aus Sharma et al. reproduzieren
 ##Ideen:
 - weight intilization ändern
 - mehr Circuits testen
