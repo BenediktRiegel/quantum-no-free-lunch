@@ -134,76 +134,77 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
 
 def plot_runtime_to_schmidt_rank():
     # num_layers = [1] + list(range(5, 20, 5))
-    num_layers = [1, 2]
-    qbits = [4]
+    num_layers = [1, 2, 5, 10, 15, 20, 25]
+    qbits = [6]
     num_epochs = 200
     lr = 0.1
-    # qnn = 'Circuit6QNN'
-    qnn = 'PennylaneQNN'
+    qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
+    # qnns = ['Circuit9QNN']
     opt_name = 'Adam'
-    for i in range(len(qbits)):
-        qbit = qbits[i]
-        r_list = [i for i in range(qbit+1)]
-        num_points = 2**(qbit+1)
-        train_times_r = []
-        prep_times_r = []
-        min_losses_r = []
-        losses_r = []
-        for j in range(len(r_list)):
-            r = r_list[j]
-            schmidt_rank = 2**r
-            min_losses = []
-            train_times = []
-            prep_times = []
-            losses_layer = []
-            for k in range(len(num_layers)):
-                num_layer = num_layers[k]
-                print(f"\nStart training: qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(r_list)}], layers [{k+1}/{len(num_layers)}]")
-                training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name)
-                losses_layer.append(losses)
-                print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
-                min_losses.append(np.array(losses).min())
-                train_times.append(training_time)
-                prep_times.append(prep_time)
-            losses_r.append(losses_layer)
-            min_losses_r.append(min_losses)
-            train_times_r.append(train_times)
-            prep_times_r.append(prep_times)
+    for qnn in qnns:
+        for i in range(len(qbits)):
+            qbit = qbits[i]
+            r_list = [i for i in range(qbit+1)]
+            num_points = 2**(qbit+1)
+            train_times_r = []
+            prep_times_r = []
+            min_losses_r = []
+            losses_r = []
+            for j in range(len(r_list)):
+                r = r_list[j]
+                schmidt_rank = 2**r
+                min_losses = []
+                train_times = []
+                prep_times = []
+                losses_layer = []
+                for k in range(len(num_layers)):
+                    num_layer = num_layers[k]
+                    print(f"\nStart training: qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(r_list)}], layers [{k+1}/{len(num_layers)}]")
+                    training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name)
+                    losses_layer.append(losses)
+                    print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
+                    min_losses.append(np.array(losses).min())
+                    train_times.append(training_time)
+                    prep_times.append(prep_time)
+                losses_r.append(losses_layer)
+                min_losses_r.append(min_losses)
+                train_times_r.append(train_times)
+                prep_times_r.append(prep_times)
 
-        plot_loss(losses_r, qbit, num_layers, num_points, r_list, name_addition=f"_{num_epochs}_epochs_lr={lr}_{qnn}")
+            plot_loss(losses_r, qbit, num_layers, num_points, r_list, name_addition=f"_{num_epochs}_epochs_lr={lr}_{qnn}")
 
-        for i in range(len(r_list)):
-            r = r_list[i]
-            min_losses = min_losses_r[i]
-            plt.plot(num_layers, min_losses, label=f"r={r}")
-        plt.legend()
-        plt.xlabel('number of layers')
-        plt.ylabel('min loss')
-        plt.title(f'Minimal loss in {num_epochs} epochs for a {qbit} qubit system')
-        plt.savefig(f'./plots/minimal_loss_{qbit}_qbits_{num_epochs}_epochs_lr={lr}_{qnn}.png')
-        plt.cla()
+            for i in range(len(r_list)):
+                r = r_list[i]
+                min_losses = min_losses_r[i]
+                plt.plot(num_layers, min_losses, label=f"r={r}")
+            plt.legend()
+            plt.xlabel('number of layers')
+            plt.ylabel('min loss')
+            plt.title(f'Minimal loss in {num_epochs} epochs for a {qbit} qubit system')
+            plt.savefig(f'./plots/minimal_loss_{qbit}_qbits_{num_epochs}_epochs_lr={lr}_{qnn}.png')
+            plt.cla()
 
-        for i in range(len(r_list)):
-            r = r_list[i]
-            times = train_times_r[i]
-            plt.plot(num_layers, times, label=f"r={r}")
-        plt.legend()
-        plt.xlabel('number of layers')
-        plt.ylabel('Time for Training [s]')
-        plt.title(f'Time for Training for {num_epochs} epochs for a {qbit} qubit system')
-        plt.savefig(f'./plots/train_time_{qbit}_qbits_{num_epochs}_epochs_lr={lr}_{qnn}.png')
-        plt.cla()
+            for i in range(len(r_list)):
+                r = r_list[i]
+                times = train_times_r[i]
+                plt.plot(num_layers, times, label=f"r={r}")
+            plt.legend()
+            plt.xlabel('number of layers')
+            plt.ylabel('Time for Training [s]')
+            plt.title(f'Time for Training for {num_epochs} epochs for a {qbit} qubit system')
+            plt.savefig(f'./plots/train_time_{qbit}_qbits_{num_epochs}_epochs_lr={lr}_{qnn}.png')
+            plt.cla()
 
-        for i in range(len(r_list)):
-            r = r_list[i]
-            times = prep_times_r[i]
-            plt.plot(num_layers, times, label=f"r={r}")
-        plt.legend()
-        plt.xlabel('Number of Layers')
-        plt.ylabel('Time for Preparations [s]')
-        plt.title(f'Time for Preparations for a {qbit} qubit system')
-        plt.savefig(f'./plots/prep_time_{qbit}_qbits_lr={lr}_{qnn}.png')
-        plt.cla()
+            for i in range(len(r_list)):
+                r = r_list[i]
+                times = prep_times_r[i]
+                plt.plot(num_layers, times, label=f"r={r}")
+            plt.legend()
+            plt.xlabel('Number of Layers')
+            plt.ylabel('Time for Preparations [s]')
+            plt.title(f'Time for Preparations for a {qbit} qubit system')
+            plt.savefig(f'./plots/prep_time_{qbit}_qbits_lr={lr}_{qnn}.png')
+            plt.cla()
 
 
 def rough_train_time_requirements(exp_duration_s=0, exp_duration_min=0, exp_duration_hour=0, exp_duration_day=0):
