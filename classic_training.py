@@ -44,8 +44,9 @@ def cost_func(X, y_conj, qnn):
     return 1 - cost
 
 
-def train(X, y_conj, qnn, num_epochs, optimizer, scheduler=None):
+def train(X, unitary, qnn, num_epochs, optimizer, scheduler=None):
     losses = []
+    y_conj = quick_matmulmat(X, torch.from_numpy(unitary.T)).conj()
     for i in range(num_epochs):
         loss = cost_func(X, y_conj, qnn)
         losses.append(loss.item())
@@ -77,7 +78,7 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
     qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers, use_torch=True)
 
 
-    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits, r_first=True)))
+    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
 
     U = random_unitary_matrix(x_qbits)
 
