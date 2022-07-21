@@ -2,7 +2,10 @@
 
 This package uses Pennylane.
 
-
+## Momentane Erxperiment: weight initalization und Lr-scheduler ist jetzt bei allen drinnen
+1. 25-50 layer für alle netze, für max. schmidt rank auf 64 samples
+evlt noch 50-200 layer
+2. Fig3. auf 4 Qbutis aus Sharma et al. reproduzieren
 ##Ideen:
 - weight intilization ändern
 - mehr Circuits testen

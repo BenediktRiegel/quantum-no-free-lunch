@@ -58,12 +58,17 @@ class PennylaneQNN(QNN):
         super(PennylaneQNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
+        depth = len(self.wires) + 3
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
         # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+
         if self.use_torch:
-            params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
+            params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 3))
             return Variable(torch.tensor(params), requires_grad=True)
         else:
-            return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
+            return np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 3))
 
     def entanglement(self):
         if len(self.wires) > 1:
@@ -125,12 +130,16 @@ class OffsetQNN(QNN):
         super(OffsetQNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
-        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        depth = len(self.wires) + 3
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+
         if self.use_torch:
-            params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
+            params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 3))
             return Variable(torch.tensor(params), requires_grad=True)
         else:
-            return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 3))
+            return np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 3))
 
     def entanglement(self, layer_num):
         layer_num = layer_num % len(self.wires)
@@ -165,12 +174,16 @@ class Circuit2QNN(QNN):
         super(Circuit2QNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
-        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        depth = len(self.wires) + 1
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+
         if self.use_torch:
-            params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 2))
+            params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 2))
             return Variable(torch.tensor(params), requires_grad=True)
         else:
-            return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 2))
+            return np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 2))
 
     def entanglement(self):
         if len(self.wires) > 1:
@@ -201,17 +214,21 @@ class Circuit5QNN(QNN):
         super(Circuit5QNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
-        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
         # wall_params = |wires| x |layers| x 4
         # cnot_params = |layers| x |wires|*(|wires|-1)
+        depth = len(self.wires) * (len(self.wires)-1) + 4
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+
         if self.use_torch:
-            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 4))
-            cnot_params = np.random.normal(0, np.pi, (self.num_layers, len(self.wires)*(len(self.wires)-1)))
+            wall_params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
+            cnot_params = np.random.normal(0, std_dev, (self.num_layers, len(self.wires)*(len(self.wires)-1)))
             wall_params = Variable(torch.tensor(wall_params), requires_grad=True)
             cnot_params = Variable(torch.tensor(cnot_params), requires_grad=True)
         else:
-            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 4))
-            cnot_params = np.random.normal(0, np.pi, (self.num_layers, len(self.wires) * (len(self.wires) - 1)))
+            wall_params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
+            cnot_params = np.random.normal(0, std_dev, (self.num_layers, len(self.wires) * (len(self.wires) - 1)))
         return [wall_params, cnot_params]
 
     def entanglement(self, num_layer):
@@ -248,17 +265,21 @@ class Circuit6QNN(QNN):
         super(Circuit6QNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
-        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
         # wall_params = |wires| x |layers| x 4
         # cnot_params = |layers| x |wires|*(|wires|-1)
+        depth = len(self.wires) * (len(self.wires)-1) + 4
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+
         if self.use_torch:
-            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 4))
-            cnot_params = np.random.normal(0, np.pi, (self.num_layers, len(self.wires)*(len(self.wires)-1)))
+            wall_params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
+            cnot_params = np.random.normal(0, std_dev, (self.num_layers, len(self.wires)*(len(self.wires)-1)))
             wall_params = Variable(torch.tensor(wall_params), requires_grad=True)
             cnot_params = Variable(torch.tensor(cnot_params), requires_grad=True)
         else:
-            wall_params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 4))
-            cnot_params = np.random.normal(0, np.pi, (self.num_layers, len(self.wires) * (len(self.wires) - 1)))
+            wall_params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
+            cnot_params = np.random.normal(0, std_dev, (self.num_layers, len(self.wires) * (len(self.wires) - 1)))
         return [wall_params, cnot_params]
 
     def entanglement(self, num_layer):
@@ -295,12 +316,16 @@ class Circuit9QNN(QNN):
             super(Circuit9QNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
-        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+        depth = len(self.wires)
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+
         if self.use_torch:
-            params = np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 1))
+            params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 1))
             return Variable(torch.tensor(params), requires_grad=True)
         else:
-            return np.random.normal(0, np.pi, (len(self.wires), self.num_layers, 1))
+            return np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 1))
 
     def entanglement(self):
         if len(self.wires) > 1:
@@ -335,14 +360,19 @@ class Circuit11QNN(QNN):
             super(Circuit11QNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
+        depth = 6 * self.num_layers
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+
         if self.use_torch:
-            outer_params = np.random.normal(0, np.pi, (2, self.num_layers, 2))
-            inner_params = np.random.normal(0, np.pi, (len(self.wires)-2, self.num_layers,4))
+            outer_params = np.random.normal(0, std_dev, (2, self.num_layers, 2))
+            inner_params = np.random.normal(0, std_dev, (len(self.wires)-2, self.num_layers,4))
             outer_params = Variable(torch.tensor(outer_params), requires_grad=True)
             inner_params = Variable(torch.tensor(inner_params), requires_grad=True)
         else:
-            outer_params = np.random.normal(0, np.pi, (2, self.num_layers, 2))
-            inner_params = np.random.normal(0, np.pi, (len(self.wires) - 2, self.num_layers, 4))
+            outer_params = np.random.normal(0, std_dev, (2, self.num_layers, 2))
+            inner_params = np.random.normal(0, std_dev, (len(self.wires) - 2, self.num_layers, 4))
         return [outer_params, inner_params]
 
     def entanglement_big(self):
@@ -391,27 +421,32 @@ class Circuit12QNN(QNN):
             super(Circuit11QNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
+        depth = 6 * self.num_layers
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+     
         if self.use_torch:
-            outer_params = np.random.normal(0, np.pi, (2, self.num_layers, 2))
-            inner_params = np.random.normal(0, np.pi, (len(self.wires)-2, self.num_layers,4))
+            outer_params = np.random.normal(0, std_dev, (2, self.num_layers, 2))
+            inner_params = np.random.normal(0, std_dev, (len(self.wires)-2, self.num_layers,4))
             outer_params = Variable(torch.tensor(outer_params), requires_grad=True)
             inner_params = Variable(torch.tensor(inner_params), requires_grad=True)
         else:
-            outer_params = np.random.normal(0, np.pi, (2, self.num_layers, 2))
-            inner_params = np.random.normal(0, np.pi, (len(self.wires) - 2, self.num_layers, 4))
+            outer_params = np.random.normal(0, std_dev, (2, self.num_layers, 2))
+            inner_params = np.random.normal(0, std_dev, (len(self.wires) - 2, self.num_layers, 4))
         return [outer_params, inner_params]
 
     def entanglement_big(self):
         for i in range(0, len(self.wires),2):
             c_wire = self.wires[i]
             t_wire = self.wires[i+1]
-            qml.CRZ(wires=[c_wire, t_wire])
+            qml.CZ(wires=[c_wire, t_wire])
 
     def entanglement_small(self):
         for i in range(1,len(self.wires)-1, 2):
             c_wire = self.wires[i]
             t_wire = self.wires[i + 1]
-            qml.CRZ(wires=[c_wire, t_wire])
+            qml.CZ(wires=[c_wire, t_wire])
 
 
     def layer(self, layer_num):
@@ -431,6 +466,132 @@ class Circuit12QNN(QNN):
             qml.RY(self.inner_params[i - 1, layer_num, 2], wires=self.wires[i])
             qml.RZ(self.inner_params[i - 1, layer_num, 3], wires=self.wires[i])
         self.entanglement_small()
+
+
+    def qnn(self):
+        for j in range(self.num_layers):
+            self.layer(j)
+
+
+class Circuit13QNN(QNN):
+    """
+    Paper Expressibility of QNN
+    Circuit 13
+    """
+
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
+            super(Circuit13QNN, self).__init__(wires, num_layers, use_torch, device)
+
+    def init_params(self):
+        depth = 2 * len(self.wires) + 2
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+     
+        if self.use_torch:
+            params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
+            return Variable(torch.tensor(params), requires_grad=True)
+        else:
+            return np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
+
+    def entanglement_2(self):
+        c_wire = self.wires[len(self.wires)]
+        t_wire = self.wires[len(self.wires)-1]
+        qml.CRZ(wires = [c_wire, t_wire])
+
+        c_wire = self.wires[0]
+        t_wire = self.wires[len(self.wires)]
+        qml.CRZ(wires=[c_wire, t_wire])
+        if len(self.wires) > 1:
+            for i in range(1, len(self.wires)-1):
+                c_wire = self.wires[i-1]
+                t_wire = self.wires[i]
+                qml.CRZ(wires=[c_wire, t_wire])
+
+
+    def entanglement_1(self):
+        c_wire = self.wires[len(self.wires)]
+        t_wire = self.wires[0]
+        qml.CRZ(wires = [c_wire, t_wire])
+        if len(self.wires) >1 :
+            for i in range(0, len(self.wires)-1):
+                c_wire = self.wires[i]
+                t_wire = self.wires[i+1]
+                qml.CRZ(wires=[c_wire, t_wire])
+
+    def layer(self, layer_num):
+        for i in range(len(self.wires)):
+            qml.RY(self.params[i, layer_num, 0],wires=self.wires[i])
+
+        self.entanglement_1()
+
+        for i in range(len(self.wires)):
+            qml.RY(self.params[i, layer_num, 2], wires=self.wires[i])
+
+        self.entanglement_2()
+
+
+    def qnn(self):
+        for j in range(self.num_layers):
+            self.layer(j)
+
+
+class Circuit14QNN(QNN):
+    """
+    Paper Expressibility of QNN
+    Circuit 14
+    """
+
+    def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
+            super(Circuit14QNN, self).__init__(wires, num_layers, use_torch, device)
+
+    def init_params(self):
+        depth = 2 * len(self.wires) + 2
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+     
+        if self.use_torch:
+            params = np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
+            return Variable(torch.tensor(params), requires_grad=True)
+        else:
+            return np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
+
+    def entanglement_2(self):
+        c_wire = self.wires[len(self.wires)]
+        t_wire = self.wires[len(self.wires)-1]
+        qml.CRZ(wires = [c_wire, t_wire])
+
+        c_wire = self.wires[0]
+        t_wire = self.wires[len(self.wires)]
+        qml.CRX(wires=[c_wire, t_wire])
+        if len(self.wires) > 1:
+            for i in range(1, len(self.wires)-1):
+                c_wire = self.wires[i-1]
+                t_wire = self.wires[i]
+                qml.CRX(wires=[c_wire, t_wire])
+
+
+    def entanglement_1(self):
+        c_wire = self.wires[len(self.wires)]
+        t_wire = self.wires[0]
+        qml.CRX(wires = [c_wire, t_wire])
+        if len(self.wires) >1 :
+            for i in range(0, len(self.wires)-1):
+                c_wire = self.wires[i]
+                t_wire = self.wires[i+1]
+                qml.CRX(wires=[c_wire, t_wire])
+
+    def layer(self, layer_num):
+        for i in range(len(self.wires)):
+            qml.RY(self.params[i, layer_num, 0],wires=self.wires[i])
+
+        self.entanglement_1()
+
+        for i in range(len(self.wires)):
+            qml.RY(self.params[i, layer_num, 2], wires=self.wires[i])
+
+        self.entanglement_2()
 
 
     def qnn(self):
