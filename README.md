@@ -2,6 +2,10 @@
 
 This package uses Pennylane.
 
+## Momentane Erxperiment:
+1. 25-50 layer für alle netze, für max. schmidt rank auf 64 samples
+2. 1-25 layer für alle netze, für max. schimdt rank auf 64 samples
+3. 25-50 layer für alle netze, für max. schmidt rank auf 64 samples und ReduceLRonPlateau
 
 ##Ideen:
 - weight intilization ändern
