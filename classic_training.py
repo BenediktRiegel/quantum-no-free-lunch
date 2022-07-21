@@ -1,9 +1,5 @@
-from data import uniform_random_data, random_unitary_matrix
-import time
 import numpy as np
-from utils import quantum_risk
 import torch
-import importlib
 
 torch.manual_seed(4241)
 np.random.seed(4241)
@@ -63,45 +59,3 @@ def train(X, unitary, qnn, num_epochs, optimizer, scheduler=None):
             # print(f"\tepoch [{i + 1}/{num_epochs}] lr={scheduler.get_lr()}")
     print(f"\tepoch [{num_epochs}/{num_epochs}] final loss {losses[-1]}")
     return losses
-
-
-def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_name, opt_name='Adam'):
-    """
-    Tensor training for QNN
-    """
-    starting_time = time.time()
-    x_qbits = num_qbits
-    r_qbits = int(np.ceil(np.log2(schmidt_rank)))  # dont use all qubits for reference system
-    x_wires = list(range(num_qbits))  # does not matter which qubits we are using, since we only want the matrix
-
-    #construct QNNobject from qnn_name string
-    qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers, use_torch=True)
-
-
-    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
-
-    U = random_unitary_matrix(x_qbits)
-
-    y_conj = quick_matmulmat(X, torch.from_numpy(U.T)).conj()
-
-    if opt_name.lower() == 'sgd':
-        optimizer = torch.optim.SGD
-    else:
-        optimizer = torch.optim.Adam
-
-    if isinstance(qnn.params, list):
-        optimizer = optimizer(qnn.params, lr=lr)
-    else:
-        optimizer = optimizer([qnn.params], lr=lr)
-    scheduler = None
-    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
-    torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
-    prep_time = time.time() - starting_time
-    print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
-
-    starting_time = time.time()
-    losses = train(X, y_conj, qnn, num_epochs, optimizer, scheduler)
-    train_time = time.time() - starting_time
-
-    print(f"\trisk = {quantum_risk(U, qnn.get_matrix_V())}")
-    return train_time, prep_time, losses
