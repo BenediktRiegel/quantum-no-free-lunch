@@ -159,7 +159,7 @@ def test_mean_std():
     np.save(save_dir + 'result.npy', all_risks_array)
 
 
-def three_qubits_exp():
+def x_qubits_exp(x_qbits):
     import torch
     import time
     from data import random_unitary_matrix, uniform_random_data
@@ -169,7 +169,6 @@ def three_qubits_exp():
     import matplotlib.pyplot as plt
 
     starting_time = time.time()
-    x_qbits = 1
     num_layers = 10
     num_epochs = 100
     lr = 0.1
@@ -226,9 +225,9 @@ def three_qubits_exp():
     plt.legend()
     plt.title('Average Risk for 3 Qubit Unitary')
     plt.tight_layout()
-    plt.savefig('./plots/three_qubit_exp.png')
+    plt.savefig(f'./plots/{x_qbits}_qubit_exp.png')
     plt.cla()
 
 
 if __name__ == '__main__':
-    three_qubits_exp()
+    x_qubits_exp(3)
