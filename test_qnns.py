@@ -63,7 +63,7 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
         optimizer = optimizer([qnn.params], lr=lr)
     scheduler = None
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
-    torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
     prep_time = time.time() - starting_time
     print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
 
@@ -103,12 +103,12 @@ def train_time_over_num_layer(r_list, train_times_r, num_layers, num_epochs, qbi
 
 def plot_runtime_to_schmidt_rank():
     # num_layers = [1] + list(range(5, 20, 5))
-    num_layers = [1, 2, 5, 10, 15, 20, 25]
-    qbits = [6]
-    num_epochs = 200
+    num_layers = [1]
+    qbits = [2]
+    num_epochs = 1
     lr = 0.1
-    qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
-    # qnns = ['Circuit9QNN']
+    # qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
+    qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
     opt_name = 'Adam'
     qnn_losses = []
     qnn_times = []

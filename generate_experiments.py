@@ -206,7 +206,7 @@ def x_qubits_exp(x_qbits):
                         optimizer = optimizer([qnn.params], lr=lr)
                     scheduler = None
                     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
-                    torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
+                    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
 
                     # starting_time = time.time()
                     losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
