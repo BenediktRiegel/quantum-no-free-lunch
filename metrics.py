@@ -13,10 +13,8 @@ def quantum_risk(U, V):
     Equation A6 in Sharma et al.
     """
     dim = len(U)
-    U = np.matrix(U)
-    V = np.matrix(V)
-    prod = np.matmul(U.getH(), V)
-    tr = abs(np.trace(prod))**2
+    prod = torch.matmul(U.T.conj(), V)
+    tr = abs(torch.trace(prod))**2
     risk = 1 - ((dim + tr)/(dim * (dim+1)))
 
     return risk
