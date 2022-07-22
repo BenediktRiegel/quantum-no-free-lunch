@@ -2,6 +2,10 @@ import torch
 import numpy as np
 
 
+def init_globals(device='cpu'):
+    pass
+
+
 def torch_tensor(A, B, device='cpu'):
     B_rows = B.shape[0]
     B_cols = B.shape[1]
@@ -18,10 +22,7 @@ def torch_tensor(A, B, device='cpu'):
 
 
 def I(size=2, device='cpu'):
-    result = torch.zeros((size, size), device=device, dtype=torch.complex128)
-    for i in range(size):
-        result[i, i] = 1
-    return result
+    return torch.eye(size, device=device)
 
 
 def CNOT(device='cpu'):
