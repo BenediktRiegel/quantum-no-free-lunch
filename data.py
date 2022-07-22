@@ -1,10 +1,5 @@
-import pennylane as qml
-import numpy as np
-import torch
-from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from scipy.stats import unitary_group
-from scipy.optimize import fmin_cobyla
 from utils import *
 from typing import List
 
