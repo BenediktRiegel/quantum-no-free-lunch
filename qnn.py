@@ -367,7 +367,7 @@ class Circuit11QNN(QNN):
 
         if self.use_torch:
             outer_params = np.random.normal(0, std_dev, (2, self.num_layers, 2))
-            inner_params = np.random.normal(0, std_dev, (len(self.wires)-2, self.num_layers,4))
+            inner_params = np.random.normal(0, std_dev, (len(self.wires)-2, self.num_layers, 4))
             outer_params = Variable(torch.tensor(outer_params), requires_grad=True)
             inner_params = Variable(torch.tensor(inner_params), requires_grad=True)
         else:
@@ -379,31 +379,31 @@ class Circuit11QNN(QNN):
         for i in range(0, len(self.wires),2):
             t_wire = self.wires[i]
             c_wire = self.wires[i+1]
-            qml.CRX(wires=[c_wire, t_wire])
+            qml.CNOT(wires=[c_wire, t_wire])
 
     def entanglement_small(self):
         for i in range(1,len(self.wires)-1, 2):
             t_wire = self.wires[i]
             c_wire = self.wires[i + 1]
-            qml.CRX(wires=[c_wire, t_wire])
+            qml.CNOT(wires=[c_wire, t_wire])
 
 
     def layer(self, layer_num):
-        qml.RY(self.outer_params[0, layer_num, 0], wires=self.wires[0])
-        qml.RZ(self.outer_params[0, layer_num, 1], wires=self.wires[0])
+        qml.RY(self.params[0][0, layer_num, 0], wires=self.wires[0])
+        qml.RZ(self.params[0][0, layer_num, 1], wires=self.wires[0])
 
-        qml.RY(self.outer_params[1, layer_num, 0], wires=self.wires[len(self.wires)])
-        qml.RZ(self.outer_params[1, layer_num, 1], wires=self.wires[len(self.wires)])
+        qml.RY(self.params[0][1, layer_num, 0], wires=self.wires[-1])
+        qml.RZ(self.params[0][1, layer_num, 1], wires=self.wires[-1])
 
         for i in range(1,len(self.wires)-1):
-            qml.RY(self.inner_params[i-1, layer_num, 0],wires=self.wires[i])
-            qml.RZ(self.inner_params[i-1, layer_num, 1],wires= self.wires[i])
+            qml.RY(self.params[1][i-1, layer_num, 0],wires=self.wires[i])
+            qml.RZ(self.params[1][i-1, layer_num, 1],wires=self.wires[i])
 
         self.entanglement_big()
 
         for i in range(1,len(self.wires)-1):
-            qml.RY(self.inner_params[i - 1, layer_num, 2], wires=self.wires[i])
-            qml.RZ(self.inner_params[i - 1, layer_num, 3], wires=self.wires[i])
+            qml.RY(self.params[1][i - 1, layer_num, 2], wires=self.wires[i])
+            qml.RZ(self.params[1][i - 1, layer_num, 3], wires=self.wires[i])
         self.entanglement_small()
 
 
@@ -418,7 +418,7 @@ class Circuit12QNN(QNN):
     """
 
     def __init__(self, wires: List[int], num_layers: int, use_torch=False, device='cpu'):
-            super(Circuit11QNN, self).__init__(wires, num_layers, use_torch, device)
+            super(Circuit12QNN, self).__init__(wires, num_layers, use_torch, device)
 
     def init_params(self):
         depth = 6 * self.num_layers
@@ -450,21 +450,21 @@ class Circuit12QNN(QNN):
 
 
     def layer(self, layer_num):
-        qml.RY(self.outer_params[0, layer_num, 0], wires=self.wires[0])
-        qml.RZ(self.outer_params[0, layer_num, 1], wires=self.wires[0])
+        qml.RY(self.params[0][0, layer_num, 0], wires=self.wires[0])
+        qml.RZ(self.params[0][0, layer_num, 1], wires=self.wires[0])
 
-        qml.RY(self.outer_params[1, layer_num, 0], wires=self.wires[len(self.wires)])
-        qml.RZ(self.outer_params[1, layer_num, 1], wires=self.wires[len(self.wires)])
+        qml.RY(self.params[0][1, layer_num, 0], wires=self.wires[-1])
+        qml.RZ(self.params[0][1, layer_num, 1], wires=self.wires[-1])
 
         for i in range(1,len(self.wires)-1):
-            qml.RY(self.inner_params[i-1, layer_num, 0],wires=self.wires[i])
-            qml.RZ(self.inner_params[i-1, layer_num, 1],wires= self.wires[i])
+            qml.RY(self.params[1][i-1, layer_num, 0],wires=self.wires[i])
+            qml.RZ(self.params[1][i-1, layer_num, 1],wires= self.wires[i])
 
         self.entanglement_big()
 
         for i in range(1,len(self.wires)-1):
-            qml.RY(self.inner_params[i - 1, layer_num, 2], wires=self.wires[i])
-            qml.RZ(self.inner_params[i - 1, layer_num, 3], wires=self.wires[i])
+            qml.RY(self.params[1][i - 1, layer_num, 2], wires=self.wires[i])
+            qml.RZ(self.params[1][i - 1, layer_num, 3], wires=self.wires[i])
         self.entanglement_small()
 
 
@@ -494,41 +494,40 @@ class Circuit13QNN(QNN):
         else:
             return np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
 
-    def entanglement_2(self):
-        c_wire = self.wires[len(self.wires)]
-        t_wire = self.wires[len(self.wires)-1]
-        qml.CRZ(wires = [c_wire, t_wire])
+    def entanglement_1(self, layer_num):
+        c_wire = self.wires[-1]
+        t_wire = self.wires[0]
+        qml.CRZ(self.params[c_wire, layer_num, 1], wires=[c_wire, t_wire])
+        if len(self.wires) > 1:
+            for i in range(0, len(self.wires)-1):
+                c_wire = self.wires[i]
+                t_wire = self.wires[i+1]
+                qml.CRZ(self.params[c_wire, layer_num, 1], wires=[c_wire, t_wire])
+
+    def entanglement_2(self, layer_num):
+        c_wire = self.wires[-1]
+        t_wire = self.wires[-2]
+        qml.CRZ(self.params[c_wire, layer_num, 3], wires=[c_wire, t_wire])
 
         c_wire = self.wires[0]
-        t_wire = self.wires[len(self.wires)]
-        qml.CRZ(wires=[c_wire, t_wire])
+        t_wire = self.wires[-1]
+        qml.CRZ(self.params[c_wire, layer_num, 3], wires=[c_wire, t_wire])
         if len(self.wires) > 1:
             for i in range(1, len(self.wires)-1):
                 c_wire = self.wires[i-1]
                 t_wire = self.wires[i]
-                qml.CRZ(wires=[c_wire, t_wire])
-
-
-    def entanglement_1(self):
-        c_wire = self.wires[len(self.wires)]
-        t_wire = self.wires[0]
-        qml.CRZ(wires = [c_wire, t_wire])
-        if len(self.wires) >1 :
-            for i in range(0, len(self.wires)-1):
-                c_wire = self.wires[i]
-                t_wire = self.wires[i+1]
-                qml.CRZ(wires=[c_wire, t_wire])
+                qml.CRZ(self.params[c_wire, layer_num, 3], wires=[c_wire, t_wire])
 
     def layer(self, layer_num):
         for i in range(len(self.wires)):
             qml.RY(self.params[i, layer_num, 0],wires=self.wires[i])
 
-        self.entanglement_1()
+        self.entanglement_1(layer_num)
 
         for i in range(len(self.wires)):
             qml.RY(self.params[i, layer_num, 2], wires=self.wires[i])
 
-        self.entanglement_2()
+        self.entanglement_2(layer_num)
 
 
     def qnn(self):
@@ -557,41 +556,40 @@ class Circuit14QNN(QNN):
         else:
             return np.random.normal(0, std_dev, (len(self.wires), self.num_layers, 4))
 
-    def entanglement_2(self):
-        c_wire = self.wires[len(self.wires)]
-        t_wire = self.wires[len(self.wires)-1]
-        qml.CRZ(wires = [c_wire, t_wire])
+    def entanglement_1(self, layer_num):
+        c_wire = self.wires[-1]
+        t_wire = self.wires[0]
+        qml.CRX(self.params[c_wire, layer_num, 1], wires=[c_wire, t_wire])
+        if len(self.wires) > 1:
+            for i in range(0, len(self.wires)-1):
+                c_wire = self.wires[i]
+                t_wire = self.wires[i+1]
+                qml.CRX(self.params[c_wire, layer_num, 1], wires=[c_wire, t_wire])
+
+    def entanglement_2(self, layer_num):
+        c_wire = self.wires[-1]
+        t_wire = self.wires[-2]
+        qml.CRZ(self.params[c_wire, layer_num, 3], wires=[c_wire, t_wire])
 
         c_wire = self.wires[0]
-        t_wire = self.wires[len(self.wires)]
-        qml.CRX(wires=[c_wire, t_wire])
+        t_wire = self.wires[-1]
+        qml.CRX(self.params[c_wire, layer_num, 3], wires=[c_wire, t_wire])
         if len(self.wires) > 1:
             for i in range(1, len(self.wires)-1):
                 c_wire = self.wires[i-1]
                 t_wire = self.wires[i]
-                qml.CRX(wires=[c_wire, t_wire])
-
-
-    def entanglement_1(self):
-        c_wire = self.wires[len(self.wires)]
-        t_wire = self.wires[0]
-        qml.CRX(wires = [c_wire, t_wire])
-        if len(self.wires) >1 :
-            for i in range(0, len(self.wires)-1):
-                c_wire = self.wires[i]
-                t_wire = self.wires[i+1]
-                qml.CRX(wires=[c_wire, t_wire])
+                qml.CRX(self.params[c_wire, layer_num, 3], wires=[c_wire, t_wire])
 
     def layer(self, layer_num):
         for i in range(len(self.wires)):
             qml.RY(self.params[i, layer_num, 0],wires=self.wires[i])
 
-        self.entanglement_1()
+        self.entanglement_1(layer_num)
 
         for i in range(len(self.wires)):
             qml.RY(self.params[i, layer_num, 2], wires=self.wires[i])
 
-        self.entanglement_2()
+        self.entanglement_2(layer_num)
 
 
     def qnn(self):
