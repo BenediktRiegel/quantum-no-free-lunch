@@ -20,6 +20,10 @@ def torch_tensor(A, B, device='cpu'):
         row_result_idx += B_rows
     return result
 
+small_I = torch.tensor([
+    [1, 0],
+    [0, 1]
+], dtype=torch.complex128)
 
 def I(size=2, device='cpu'):
     return torch.eye(size, device=device)
@@ -33,36 +37,41 @@ def CNOT(device='cpu'):
         [0, 0, 1, 0]
     ], device=device, dtype=torch.complex128)
 
+other_dig_j = torch.tensor([
+        [0, 1j],
+        [1j, 0]
+    ], dtype=torch.complex128)
 
 def RX(rx):
     x_sin = torch.sin(rx / 2.)
     x_cos = torch.cos(rx / 2.)
-    result = I()*x_cos - torch.tensor([
-        [0, 1j],
-        [1j, 0]
-    ], dtype=torch.complex128)*x_sin
+    result = small_I*x_cos - other_dig_j*x_sin
     return result
 
+other_dig_one_and_minus_one = torch.tensor([
+        [0, -1],
+        [1, 0]
+    ], dtype=torch.complex128)
 
 def RY(ry):
     y_sin = torch.sin(ry / 2.)
     y_cos = torch.cos(ry / 2.)
-    result = I()*y_cos + torch.tensor([
-        [0, -1],
-        [1, 0]
-    ], dtype=torch.complex128)*y_sin
+    result = small_I*y_cos + other_dig_one_and_minus_one*y_sin
     return result
 
-
-def RZ(rz):
-    z_exp = torch.exp(1j*rz)
-    return torch.tensor([
+one_top_left = torch.tensor([
         [1, 0],
         [0, 0]
-    ], dtype=torch.complex128) + z_exp*torch.tensor([
+    ], dtype=torch.complex128)
+
+one_bottom_right = torch.tensor([
         [0, 0],
         [0, 1]
     ], dtype=torch.complex128)
+
+def RZ(rz):
+    z_exp = torch.exp(1j*rz)
+    return one_top_left + z_exp*one_bottom_right
 
 
 def U3(rx, ry, rz, device='cpu'):
@@ -77,12 +86,14 @@ def U3(rx, ry, rz, device='cpu'):
     return torch.matmul(torch.matmul(RZ(rz), RY(ry)), RX(rx)).to(device)
 
 
+_H = torch.tensor([
+        [1./np.sqrt(2.), 1./np.sqrt(2.)],
+        [1./np.sqrt(2.), -1./np.sqrt(2.)]
+    ], dtype=torch.complex128)
+
+
 def H(device='cpu'):
-    inv_sqrt_two = 1./np.sqrt(2.)
-    return torch.tensor([
-        [inv_sqrt_two, inv_sqrt_two],
-        [inv_sqrt_two, -inv_sqrt_two]
-    ], device=device, dtype=torch.complex128)
+    return _H.to(device)
 
 
 def is_unitary(M, error=1e-15):
