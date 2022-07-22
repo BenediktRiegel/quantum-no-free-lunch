@@ -25,11 +25,11 @@ def quick_matmulmat(A, B):
     return result
 
 
-def cost_func(X, y_conj, qnn):
+def cost_func(X, y_conj, qnn, device='cpu'):
     """
     Compute cost function based on the circuit in Fig. 5 in Sharma et al.
     """
-    cost = torch.zeros((1,))
+    cost = torch.zeros((1,), device=device)
     V = qnn.get_tensor_V()
     for idx in range(len(X)):
         state = quick_matmulvec(V, X[idx])
@@ -40,11 +40,11 @@ def cost_func(X, y_conj, qnn):
     return 1 - cost
 
 
-def train(X, unitary, qnn, num_epochs, optimizer, scheduler=None):
+def train(X, unitary, qnn, num_epochs, optimizer, scheduler=None, device='cpu'):
     losses = []
-    y_conj = quick_matmulmat(X, torch.from_numpy(unitary.T)).conj()
+    y_conj = quick_matmulmat(X, torch.from_numpy(unitary.T)).conj().to(device)
     for i in range(num_epochs):
-        loss = cost_func(X, y_conj, qnn)
+        loss = cost_func(X, y_conj, qnn, device=device)
         losses.append(loss.item())
         if i % 100 == 0:
             print(f"\tepoch [{i+1}/{num_epochs}] loss={loss.item()}")

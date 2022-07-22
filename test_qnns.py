@@ -36,7 +36,7 @@ def plot_loss(losses, num_qbits, num_layers, num_points, r_list, name_addition='
         plt.cla()
 
 
-def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_name, opt_name='Adam'):
+def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_name, opt_name='Adam', device='cpu'):
     """
         Tensor training for QNN
         """
@@ -46,9 +46,12 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
     x_wires = list(range(num_qbits))  # does not matter which qubits we are using, since we only want the matrix
 
     # construct QNNobject from qnn_name string
-    qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers, use_torch=True)
+    if 'cuda' in qnn_name.lower():
+        qnn = getattr(importlib.import_module('cuda_qnn'), qnn_name)(num_wires=len(x_wires), num_layers=num_layers, device=device)
+    else:
+        qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers, use_torch=True)
 
-    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits))).to(device)
 
     U = random_unitary_matrix(x_qbits)
 
@@ -63,12 +66,12 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
         optimizer = optimizer([qnn.params], lr=lr)
     scheduler = None
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
     prep_time = time.time() - starting_time
     print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
 
     starting_time = time.time()
-    losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
+    losses = train(X, U, qnn, num_epochs, optimizer, scheduler, device=device)
     train_time = time.time() - starting_time
 
     print(f"\trisk = {quantum_risk(U, qnn.get_matrix_V())}")
@@ -103,12 +106,13 @@ def train_time_over_num_layer(r_list, train_times_r, num_layers, num_epochs, qbi
 
 def plot_runtime_to_schmidt_rank():
     # num_layers = [1] + list(range(5, 20, 5))
-    num_layers = [1]
-    qbits = [2]
-    num_epochs = 1
+    num_layers = [10]
+    qbits = [3]
+    num_epochs = 200
     lr = 0.1
     # qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
-    qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
+    # qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
+    qnns = ['CudaPennylane']
     opt_name = 'Adam'
     qnn_losses = []
     qnn_times = []
