@@ -38,7 +38,7 @@ class QNN:
 
     def get_matrix_V(self):
         if self.use_torch:
-            return qml.matrix(self.qnn)().detach().numpy()
+            return qml.matrix(self.qnn)().detach()
         else:
             return qml.matrix(self.qnn)()
 

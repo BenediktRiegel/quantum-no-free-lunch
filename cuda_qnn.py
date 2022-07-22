@@ -9,6 +9,7 @@ import quantum_gates as qg
 class CudaQNN:
 
     def __init__(self, num_wires, num_layers: int, device='cpu'):
+        qg.init_globals(device=device)
         self.num_wires = num_wires
         self.num_layers = num_layers
         self.device = device
@@ -27,7 +28,7 @@ class CudaQNN:
         """
 
     def get_matrix_V(self):
-        return self.qnn().detach().numpy()
+        return self.qnn().detach()
 
     def get_tensor_V(self):
         return self.qnn()
@@ -66,7 +67,7 @@ class CudaPennylane(CudaQNN):
     def layer(self, layer_num):
         result = qg.U3(self.params[0, layer_num, 0], self.params[0, layer_num, 1], self.params[0, layer_num, 2])
         for i in range(1, self.num_wires):
-            result = qg.torch_tensor(
+            result = torch.kron(
                 result,
                 qg.U3(self.params[i, layer_num, 0], self.params[i, layer_num, 1], self.params[i, layer_num, 2])
             )
