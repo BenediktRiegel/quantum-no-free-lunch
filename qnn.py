@@ -2,13 +2,7 @@
 This file contains all qnn architectures
 """
 
-import time
-
-import pennylane as qml
-import numpy as np
-import torch
 from torch.autograd import Variable
-from torch.utils.data import DataLoader
 from abc import abstractmethod
 from typing import List
 from utils import *
