@@ -1,46 +1,73 @@
 import torch
 import numpy as np
 
+small_I = None
+other_dig_j = None
+other_dig_one_and_minus_one = None
+one_top_left = None
+one_top_left = None
+one_bottom_right = None
+_H = None
+_CNOT = None
+
 
 def init_globals(device='cpu'):
-    pass
+    global small_I
+    global other_dig_j
+    global other_dig_one_and_minus_one
+    global one_top_left
+    global one_top_left
+    global one_bottom_right
+    global _H
+    global _CNOT
+    small_I = torch.tensor([
+        [1, 0],
+        [0, 1]
+    ], dtype=torch.complex128, device=device)
+
+    other_dig_j = torch.tensor([
+        [0, 1j],
+        [1j, 0]
+    ], dtype=torch.complex128, device=device)
+
+    other_dig_one_and_minus_one = torch.tensor([
+        [0, -1],
+        [1, 0]
+    ], dtype=torch.complex128, device=device)
+
+    one_top_left = torch.tensor([
+        [1, 0],
+        [0, 0]
+    ], dtype=torch.complex128, device=device)
+
+    one_bottom_right = torch.tensor([
+        [0, 0],
+        [0, 1]
+    ], dtype=torch.complex128, device=device)
+
+    _H = torch.tensor([
+        [1. / np.sqrt(2.), 1. / np.sqrt(2.)],
+        [1. / np.sqrt(2.), -1. / np.sqrt(2.)]
+    ], dtype=torch.complex128, device=device)
+
+    _CNOT = torch.tensor([
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 0, 1],
+        [0, 0, 1, 0]
+    ], dtype=torch.complex128, device=device)
 
 
-def torch_tensor(A, B, device='cpu'):
-    B_rows = B.shape[0]
-    B_cols = B.shape[1]
-    size = (A.shape[0] * B.shape[0], A.shape[1] * B.shape[1])
-    result = torch.zeros(size, device=device, dtype=torch.complex128)
-    row_result_idx = 0
-    for row_A_idx in range(A.shape[0]):
-        col_result_idx = 0
-        for col_A_idx in range(A.shape[1]):
-            result[row_result_idx:row_result_idx+B_rows, col_result_idx:col_result_idx+B_cols] = A[row_A_idx, col_A_idx] * B
-            col_result_idx += B_cols
-        row_result_idx += B_rows
-    return result
+init_globals(device='cpu')
 
-small_I = torch.tensor([
-    [1, 0],
-    [0, 1]
-], dtype=torch.complex128)
 
 def I(size=2, device='cpu'):
     return torch.eye(size, device=device)
 
 
-def CNOT(device='cpu'):
-    return torch.tensor([
-        [1, 0, 0, 0],
-        [0, 1, 0, 0],
-        [0, 0, 0, 1],
-        [0, 0, 1, 0]
-    ], device=device, dtype=torch.complex128)
+def CNOT():
+    return _CNOT
 
-other_dig_j = torch.tensor([
-        [0, 1j],
-        [1j, 0]
-    ], dtype=torch.complex128)
 
 def RX(rx):
     x_sin = torch.sin(rx / 2.)
@@ -48,10 +75,6 @@ def RX(rx):
     result = small_I*x_cos - other_dig_j*x_sin
     return result
 
-other_dig_one_and_minus_one = torch.tensor([
-        [0, -1],
-        [1, 0]
-    ], dtype=torch.complex128)
 
 def RY(ry):
     y_sin = torch.sin(ry / 2.)
@@ -59,41 +82,18 @@ def RY(ry):
     result = small_I*y_cos + other_dig_one_and_minus_one*y_sin
     return result
 
-one_top_left = torch.tensor([
-        [1, 0],
-        [0, 0]
-    ], dtype=torch.complex128)
-
-one_bottom_right = torch.tensor([
-        [0, 0],
-        [0, 1]
-    ], dtype=torch.complex128)
 
 def RZ(rz):
     z_exp = torch.exp(1j*rz)
     return one_top_left + z_exp*one_bottom_right
 
 
-def U3(rx, ry, rz, device='cpu'):
-    # x_sin = torch.sin(rx/2.)
-    # x_cos = torch.cos(rx/2.)
-    # ll = torch.exp(1j * ry)
-    # ur = torch.exp(1j*rz)
-    # return torch.tensor([
-    #     [x_cos, -ur*x_sin],
-    #     [ll * x_sin, ll*ur*x_cos]
-    # ], device=device, dtype=torch.complex128)
-    return torch.matmul(torch.matmul(RZ(rz), RY(ry)), RX(rx)).to(device)
+def U3(rx, ry, rz):
+    return torch.matmul(torch.matmul(RZ(rz), RY(ry)), RX(rx))
 
 
-_H = torch.tensor([
-        [1./np.sqrt(2.), 1./np.sqrt(2.)],
-        [1./np.sqrt(2.), -1./np.sqrt(2.)]
-    ], dtype=torch.complex128)
-
-
-def H(device='cpu'):
-    return _H.to(device)
+def H():
+    return H
 
 
 def is_unitary(M, error=1e-15):

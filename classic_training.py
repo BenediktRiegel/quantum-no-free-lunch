@@ -42,7 +42,7 @@ def cost_func(X, y_conj, qnn, device='cpu'):
 
 def train(X, unitary, qnn, num_epochs, optimizer, scheduler=None, device='cpu'):
     losses = []
-    y_conj = quick_matmulmat(X, torch.from_numpy(unitary.T)).conj().to(device)
+    y_conj = quick_matmulmat(X, unitary.T).conj()
     for i in range(num_epochs):
         loss = cost_func(X, y_conj, qnn, device=device)
         losses.append(loss.item())

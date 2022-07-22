@@ -53,7 +53,7 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
 
     X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits))).to(device)
 
-    U = random_unitary_matrix(x_qbits)
+    U = torch.tensor(random_unitary_matrix(x_qbits), device=device)
 
     if opt_name.lower() == 'sgd':
         optimizer = torch.optim.SGD
@@ -107,12 +107,14 @@ def train_time_over_num_layer(r_list, train_times_r, num_layers, num_epochs, qbi
 def plot_runtime_to_schmidt_rank():
     # num_layers = [1] + list(range(5, 20, 5))
     num_layers = [10]
-    qbits = [3]
+    qbits = [6]
     num_epochs = 200
     lr = 0.1
     # qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
     # qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
     qnns = ['CudaPennylane']
+    # device = 'cuda:0'
+    device = 'cpu'
     opt_name = 'Adam'
     qnn_losses = []
     qnn_times = []
@@ -139,7 +141,7 @@ def plot_runtime_to_schmidt_rank():
                 for k in range(len(num_layers)):
                     num_layer = num_layers[k]
                     print(f"\nStart training: qnn [{qnn_idx}/{len(qnns)}], qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(r_list)}], layers [{k+1}/{len(num_layers)}]")
-                    training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name)
+                    training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name, device=device)
                     losses_layer.append(losses)
                     print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
                     min_losses.append(np.array(losses).min())
