@@ -5,6 +5,7 @@ import torch
 import matplotlib.pyplot as plt
 import importlib
 from classic_training import train
+from classic_training import init as init_classic_training
 from data import uniform_random_data, random_unitary_matrix
 
 torch.manual_seed(4241)
@@ -70,6 +71,7 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
     prep_time = time.time() - starting_time
     print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
 
+    init_classic_training(device=device)
     starting_time = time.time()
     losses = train(X, U, qnn, num_epochs, optimizer, scheduler, device=device)
     train_time = time.time() - starting_time
@@ -113,8 +115,8 @@ def plot_runtime_to_schmidt_rank():
     # qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
     # qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
     qnns = ['CudaPennylane']
-    # device = 'cuda:0'
     device = 'cpu'
+    device = 'cuda:0'
     opt_name = 'Adam'
     qnn_losses = []
     qnn_times = []
