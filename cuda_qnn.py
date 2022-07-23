@@ -62,7 +62,8 @@ class CudaPennylane(CudaQNN):
         # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
 
         params = np.random.normal(0, std_dev, (self.num_wires, self.num_layers, 3))
-        return Variable(torch.tensor(params), requires_grad=True)
+        # return Variable(torch.tensor(params, device=self.device), requires_grad=True)
+        return torch.tensor(params, device=self.device, requires_grad=True)
 
     def layer(self, layer_num):
         result = qg.U3(self.params[0, layer_num, 0], self.params[0, layer_num, 1], self.params[0, layer_num, 2])
