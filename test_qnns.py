@@ -109,14 +109,15 @@ def train_time_over_num_layer(r_list, train_times_r, num_layers, num_epochs, qbi
 def plot_runtime_to_schmidt_rank():
     # num_layers = [1] + list(range(5, 20, 5))
     num_layers = [10]
-    qbits = [6]
-    num_epochs = 200
+    qbits = [5]
+    num_epochs = 20
     lr = 0.1
     # qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
     # qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
-    qnns = ['CudaPennylane']
+    qnns = ['CudaCircuit6']
+    qnns = ['Circuit6QNN']
     device = 'cpu'
-    device = 'cuda:0'
+    # device = 'cuda:0'
     opt_name = 'Adam'
     qnn_losses = []
     qnn_times = []
@@ -142,10 +143,15 @@ def plot_runtime_to_schmidt_rank():
                 losses_layer = []
                 for k in range(len(num_layers)):
                     num_layer = num_layers[k]
-                    print(f"\nStart training: qnn [{qnn_idx}/{len(qnns)}], qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(r_list)}], layers [{k+1}/{len(num_layers)}]")
-                    training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name, device=device)
-                    losses_layer.append(losses)
-                    print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
+                    runs = 100
+                    t_times = np.zeros((runs,))
+                    for i in range(runs):
+                        print(f"\nStart training: qnn [{qnn_idx}/{len(qnns)}], qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(r_list)}], layers [{k+1}/{len(num_layers)}]")
+                        training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name, device=device)
+                        losses_layer.append(losses)
+                        t_times[i] = training_time
+                        print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
+                    print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took mean: {t_times.mean()}s std: {t_times.std()}s min: {t_times.min()}s max: {t_times.max()}s\n")
                     min_losses.append(np.array(losses).min())
                     train_times.append(training_time)
                     prep_times.append(prep_time)
