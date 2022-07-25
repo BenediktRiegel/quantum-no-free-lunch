@@ -15,6 +15,28 @@ def init(device='cpu'):
     cost = torch.zeros((1,), device=device)
 
 
+def quick_matmulvec(M, vec, device='cpu'):
+    # matmulvec_result = torch.empty(vec.shape, dtype=torch.complex128, device=device)
+    matmulvec_result = []
+    size = M.shape[0] #quadratic, no care
+
+    for i in range(0, vec.shape[0], size):
+        matmulvec_result.append(torch.matmul(M, vec[i:i+size]))
+    return torch.stack(matmulvec_result).reshape((vec.shape[0],))
+
+
+def quick_matmulmat(A, B, device='cpu'):
+    """
+    To do: A*(IxB) = X*(IxU.T)
+    """
+    matmulmat_result = torch.empty(A.shape, dtype=torch.complex128, device=device)
+    size = B.shape[0]   # 2**x_qbit in case B=U.T
+    for i in range(0, A.shape[0], size):
+        for j in range(0, A.shape[1], size):
+            matmulmat_result[i:i+size, j:j+size] = torch.matmul(A[i:i+size, j:j+size], B)
+    return matmulmat_result
+
+
 def cost_func(X, y_conj, qnn, device='cpu'):
     """
     Compute cost function based on the circuit in Fig. 5 in Sharma et al.
@@ -23,7 +45,7 @@ def cost_func(X, y_conj, qnn, device='cpu'):
     cost = 0
     V = qnn.get_tensor_V()
     for idx in range(len(X)):
-        state = quick_matmulvec(V, X[idx])
+        state = quick_matmulvec(V, X[idx], device=device)
         state = torch.dot(y_conj[idx], state)
         cost += torch.square(state.real) + torch.square(state.imag)
     cost /= len(X)
