@@ -5,7 +5,6 @@ import torch
 import matplotlib.pyplot as plt
 import importlib
 from classic_training import train
-from classic_training import init as init_classic_training
 from data import uniform_random_data, random_unitary_matrix
 
 torch.manual_seed(4241)
@@ -23,6 +22,7 @@ def plot_loss(losses, num_qbits, num_layers, num_points, r_list, name_addition='
                 loss = losses[i, j]
                 plt.plot(list(range(len(loss))), loss, label=f"r={r}")
             plt.legend()
+            plt.ylim(0.001)
             # plt.yscale('log')
             # plt.xscale('log')
             plt.title(f"Loss for net with {num_qbits} qbits, {num_layer} layers, {num_points} data points")
@@ -60,6 +60,8 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
 
     U = torch.tensor(random_unitary_matrix(x_qbits), device=device)
 
+    X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+
     if opt_name.lower() == 'sgd':
         optimizer = torch.optim.SGD
     else:
@@ -75,7 +77,6 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
     prep_time = time.time() - starting_time
     print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
 
-    init_classic_training(device=device)
     starting_time = time.time()
     losses = train(X, U, qnn, num_epochs, optimizer, scheduler, device=device)
     train_time = time.time() - starting_time
@@ -112,16 +113,16 @@ def train_time_over_num_layer(r_list, train_times_r, num_layers, num_epochs, qbi
 
 def plot_runtime_to_schmidt_rank():
     # num_layers = [1] + list(range(5, 20, 5))
-    num_layers = [10]
+    num_layers = [400]
     qbits = [6]
-    num_epochs = 200
-    lr = 0.01
+    num_epochs = 400
+    lr = 0.1
     # qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
     # qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
     qnns = ['CudaCircuit6']
     qnns = ['CudaEfficient']
     qnns = ['CudaPennylane']
-    qnns = ['CudaSimpleEnt']
+    # qnns = ['CudaSimpleEnt']
     # qnns = ['CudaComplexPennylane']
     device = 'cpu'
     # device = 'cuda:0'
@@ -135,8 +136,9 @@ def plot_runtime_to_schmidt_rank():
             qbit = qbits[i]
             # r_list = [i for i in range(qbit+1)]
             r_list = [qbit]
-            # num_points = 2**(qbit+1)
-            num_points = 1
+            # r_list = [0]
+            num_points = 2**(qbit)
+            # num_points = 1
             train_times_r = []
             prep_times_r = []
             min_losses_r = []
