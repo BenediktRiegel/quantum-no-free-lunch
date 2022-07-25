@@ -115,13 +115,13 @@ def plot_runtime_to_schmidt_rank():
     num_layers = [10]
     qbits = [6]
     num_epochs = 200
-    lr = 0.01
+    lr = 0.1
     # qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
     # qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
     qnns = ['CudaCircuit6']
     qnns = ['CudaEfficient']
     qnns = ['CudaPennylane']
-    qnns = ['CudaSimpleEnt']
+    # qnns = ['CudaSimpleEnt']
     # qnns = ['CudaComplexPennylane']
     device = 'cpu'
     # device = 'cuda:0'
@@ -135,8 +135,8 @@ def plot_runtime_to_schmidt_rank():
             qbit = qbits[i]
             # r_list = [i for i in range(qbit+1)]
             r_list = [qbit]
-            # num_points = 2**(qbit+1)
-            num_points = 1
+            num_points = 2**(qbit)
+            # num_points = 1
             train_times_r = []
             prep_times_r = []
             min_losses_r = []
