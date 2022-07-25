@@ -121,7 +121,7 @@ def plot_runtime_to_schmidt_rank():
     qnns = ['CudaCircuit6']
     qnns = ['CudaEfficient']
     qnns = ['CudaPennylane']
-    # qnns = ['CudaSimpleEnt']
+    qnns = ['CudaSimpleEnt']
     # qnns = ['CudaComplexPennylane']
     device = 'cpu'
     # device = 'cuda:0'
@@ -150,13 +150,8 @@ def plot_runtime_to_schmidt_rank():
                 losses_layer = []
                 for k in range(len(num_layers)):
                     num_layer = num_layers[k]
-                    print(f"\nStart training: qnn [{qnn_idx}/{len(qnns)}], qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(r_list)}], layers [{k+1}/{len(num_layers)}]")
-                    t_time = np.zeros((20,))
-                    for i in range(20):
-                        training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name, device=device)
-                        t_time[i] = training_time
+                    training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name, device=device)
                     losses_layer.append(losses)
-                    training_time = f"mean: {t_time.mean()}s, min: {t_time.min()}"
                     print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
                     min_losses.append(np.array(losses).min())
                     train_times.append(training_time)
