@@ -113,9 +113,9 @@ def train_time_over_num_layer(r_list, train_times_r, num_layers, num_epochs, qbi
 
 def plot_runtime_to_schmidt_rank():
     # num_layers = [1] + list(range(5, 20, 5))
-    num_layers = [400]
+    num_layers = [10]
     qbits = [6]
-    num_epochs = 400
+    num_epochs = 200
     lr = 0.1
     # qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
     # qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
