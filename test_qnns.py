@@ -23,6 +23,8 @@ def plot_loss(losses, num_qbits, num_layers, num_points, r_list, name_addition='
                 loss = losses[i, j]
                 plt.plot(list(range(len(loss))), loss, label=f"r={r}")
             plt.legend()
+            # plt.yscale('log')
+            # plt.xscale('log')
             plt.title(f"Loss for net with {num_qbits} qbits, {num_layer} layers, {num_points} data points")
             plt.xlabel("epochs")
             plt.ylabel("loss")
@@ -30,6 +32,8 @@ def plot_loss(losses, num_qbits, num_layers, num_points, r_list, name_addition='
             plt.cla()
     else:
         plt.plot(list(range(len(losses))), losses)
+        # plt.yscale('log')
+        # plt.xscale('log')
         plt.title(f"Loss for net with {num_qbits} qbits, {num_layers} layers, {num_points} data points, {2**r_list} schmidt rank")
         plt.xlabel("epochs")
         plt.ylabel("loss")
@@ -67,7 +71,7 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
         optimizer = optimizer([qnn.params], lr=lr)
     scheduler = None
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
-    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
     prep_time = time.time() - starting_time
     print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
 
@@ -109,13 +113,16 @@ def train_time_over_num_layer(r_list, train_times_r, num_layers, num_epochs, qbi
 def plot_runtime_to_schmidt_rank():
     # num_layers = [1] + list(range(5, 20, 5))
     num_layers = [10]
-    qbits = [5]
-    num_epochs = 20
+    qbits = [6]
+    num_epochs = 200
     lr = 0.1
     # qnns = ['PennylaneQNN', 'OffsetQNN', 'Circuit2QNN', 'Circuit5QNN', 'Circuit6QNN', 'Circuit9QNN']
     # qnns = ['Circuit11QNN', 'Circuit12QNN', 'Circuit13QNN', 'Circuit14QNN']
     qnns = ['CudaCircuit6']
-    qnns = ['Circuit6QNN']
+    qnns = ['CudaEfficient']
+    qnns = ['CudaPennylane']
+    # qnns = ['CudaSimpleEnt']
+    # qnns = ['CudaComplexPennylane']
     device = 'cpu'
     # device = 'cuda:0'
     opt_name = 'Adam'
@@ -143,18 +150,14 @@ def plot_runtime_to_schmidt_rank():
                 losses_layer = []
                 for k in range(len(num_layers)):
                     num_layer = num_layers[k]
-                    runs = 100
-                    t_times = np.zeros((runs,))
-                    for i in range(runs):
-                        print(f"\nStart training: qnn [{qnn_idx}/{len(qnns)}], qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(r_list)}], layers [{k+1}/{len(num_layers)}]")
-                        training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name, device=device)
-                        losses_layer.append(losses)
-                        t_times[i] = training_time
-                        print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
-                    print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took mean: {t_times.mean()}s std: {t_times.std()}s min: {t_times.min()}s max: {t_times.max()}s\n")
+                    print(f"\nStart training: qnn [{qnn_idx}/{len(qnns)}], qbit [{i+1}/{len(qbits)}], r [{j+1}/{len(r_list)}], layers [{k+1}/{len(num_layers)}]")
+                    training_time, prep_time, losses = init(num_layer, qbit, schmidt_rank, num_points, num_epochs, lr, qnn, opt_name=opt_name, device=device)
+                    losses_layer.append(losses)
+                    print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
                     min_losses.append(np.array(losses).min())
                     train_times.append(training_time)
                     prep_times.append(prep_time)
+                    plot_loss(losses, qbit, num_layer, num_points, r, name_addition=f"_{qnn}")
 
                 losses_r.append(losses_layer)
                 min_losses_r.append(min_losses)

@@ -36,7 +36,7 @@ def train(X, unitary, qnn, num_epochs, optimizer, scheduler=None, device='cpu'):
     for i in range(num_epochs):
         loss = cost_func(X, y_conj, qnn, device=device)
         losses.append(loss.item())
-        if i % 1 == 0:
+        if i % 100 == 0:
             print(f"\tepoch [{i+1}/{num_epochs}] loss={loss.item()}")
         if loss.item() == 0.0:
             # print(f"epoch [{i+1}/{num_epochs}] loss={loss.item()}\nstopped")
