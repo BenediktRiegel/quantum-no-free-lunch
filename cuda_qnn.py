@@ -10,11 +10,11 @@ import quantum_gates as qg
 class CudaQNN:
 
     def __init__(self, num_wires, num_layers: int, device='cpu'):
-        qg.init_globals(device=device)
         self.num_wires = num_wires
         self.num_layers = num_layers
         self.device = device
         self.params = self.init_params()
+        qg.init_globals(device=self.device)
 
     @abstractmethod
     def init_params(self):
