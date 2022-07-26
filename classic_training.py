@@ -2,7 +2,6 @@ import time
 
 import numpy as np
 import torch
-from quantum_gates import quick_matmulmat, quick_matmulvec
 
 torch.manual_seed(4241)
 np.random.seed(4241)
@@ -21,6 +20,7 @@ def cost_func(X, y_conj, qnn, device='cpu'):
 def train(X, unitary, qnn, num_epochs, optimizer, scheduler=None, device='cpu'):
     losses = []
     y_conj = torch.matmul(unitary, X).conj()
+    i = 0
     for i in range(num_epochs):
         loss = cost_func(X, y_conj, qnn, device=device)
         losses.append(loss.item())
@@ -35,5 +35,5 @@ def train(X, unitary, qnn, num_epochs, optimizer, scheduler=None, device='cpu'):
         if scheduler is not None:
             scheduler.step(loss.item())
             # print(f"\tepoch [{i + 1}/{num_epochs}] lr={scheduler.get_lr()}")
-    print(f"\tepoch [{num_epochs}/{num_epochs}] final loss {losses[-1]}")
+    print(f"\tepoch [{i+1}/{num_epochs}] final loss {losses[-1]}")
     return losses
