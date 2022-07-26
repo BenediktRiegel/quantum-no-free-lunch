@@ -5,7 +5,8 @@ small_I = None
 other_dig_j = None
 other_dig_one_and_minus_one = None
 one_top_left = None
-one_top_left = None
+one_top_right = None
+one_bottom_left = None
 one_bottom_right = None
 _H = None
 _CNOT = None
@@ -25,6 +26,26 @@ def init_globals(device='cpu'):
         [0, 1]
     ], dtype=torch.complex128, device=device)
 
+    one_top_left = torch.tensor([
+        [1, 0],
+        [0, 0]
+    ], dtype=torch.complex128, device=device)
+
+    one_top_right = torch.tensor([
+        [0, 1],
+        [0, 0]
+    ], dtype=torch.complex128, device=device)
+
+    one_bottom_left = torch.tensor([
+        [0, 0],
+        [1, 0]
+    ], dtype=torch.complex128, device=device)
+
+    one_bottom_right = torch.tensor([
+        [0, 0],
+        [0, 1]
+    ], dtype=torch.complex128, device=device)
+
     other_dig_j = torch.tensor([
         [0, 1j],
         [1j, 0]
@@ -33,16 +54,6 @@ def init_globals(device='cpu'):
     other_dig_one_and_minus_one = torch.tensor([
         [0, -1],
         [1, 0]
-    ], dtype=torch.complex128, device=device)
-
-    one_top_left = torch.tensor([
-        [1, 0],
-        [0, 0]
-    ], dtype=torch.complex128, device=device)
-
-    one_bottom_right = torch.tensor([
-        [0, 0],
-        [0, 1]
     ], dtype=torch.complex128, device=device)
 
     _H = torch.tensor([
@@ -93,7 +104,8 @@ def U3(rx, ry, rz):
     x_sin = torch.sin(rx / 2.) + 0j
     y_exp = torch.exp(1j * ry) + 0j
     z_exp = torch.exp(1j * rz) + 0j
-    return torch.stack([x_cos, -z_exp * x_sin, y_exp * x_sin, z_exp * y_exp * x_cos]).reshape((2, 2))
+    return one_top_left*x_cos - one_top_right*z_exp*x_sin + one_bottom_left*y_exp*x_sin + one_bottom_right*z_exp*y_exp*x_cos
+    # return torch.stack([x_cos, -z_exp * x_sin, y_exp * x_sin, z_exp * y_exp * x_cos]).reshape((2, 2))
     # return torch.matmul(torch.matmul(RZ(rz), RY(ry)), RX(rx))
 
 

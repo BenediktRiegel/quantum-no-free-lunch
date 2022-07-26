@@ -73,7 +73,7 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
         optimizer = optimizer([qnn.params], lr=lr)
     scheduler = None
     # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=False)
     prep_time = time.time() - starting_time
     print(f"\tPreparation with {num_qbits} qubits and {num_layers} layers took {prep_time}s")
 
@@ -157,6 +157,7 @@ def plot_runtime_to_schmidt_rank():
                     losses_layer.append(losses)
                     print(f"\tTraining with {qbit} qubits, {num_layer} layers and r={r} took {training_time}s\n")
                     min_losses.append(np.array(losses).min())
+                    print(f"\tminimal loss: {min_losses[-1]}")
                     train_times.append(training_time)
                     prep_times.append(prep_time)
                     plot_loss(losses, qbit, num_layer, num_points, r, name_addition=f"_{qnn}")
