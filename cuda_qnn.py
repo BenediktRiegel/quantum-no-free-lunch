@@ -79,7 +79,11 @@ class CudaPennylane(CudaQNN):
     def qnn(self):
         result = self.layer(0)
         for j in range(1, self.num_layers):
+            # if not qg.is_unitary(result):
+            #     print(f"qnn with {j} layers is not unitary")
             result = torch.matmul(self.layer(j), result)
+        # if not qg.is_unitary(result):
+        #     print(f"qnn is not unitary")
         return result
 
 
@@ -327,6 +331,10 @@ class CudaSimpleEnt(CudaQNN):
             ent_layers = []
             def ent_layer():
                 if self.num_wires > 1:
+                    for i in range(self.num_wires):
+                        c_wire = i
+                        t_wire = (i + 1) % self.num_wires
+                        qml.CNOT(wires=[c_wire, t_wire])
                     for i in range(self.num_wires):
                         c_wire1 = i
                         c_wire2 = (i + 1) % self.num_wires
