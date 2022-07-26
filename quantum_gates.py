@@ -17,7 +17,8 @@ def init_globals(device='cpu'):
     global other_dig_j
     global other_dig_one_and_minus_one
     global one_top_left
-    global one_top_left
+    global one_top_right
+    global one_bottom_left
     global one_bottom_right
     global _H
     global _CNOT
