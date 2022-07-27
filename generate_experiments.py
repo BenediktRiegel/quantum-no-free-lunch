@@ -169,14 +169,15 @@ def x_qubits_exp(x_qbits):
     import matplotlib.pyplot as plt
 
     complete_starting_time = time.time()
-    num_layers = 10
+    num_layers = 1
     num_epochs = 100
     lr = 0.1
     r_list = list(range(x_qbits+1))
     num_unitaries = 5
     num_datasets = 5
     num_datapoints = list(range(1, 2**x_qbits + 1))
-    qnn_name = 'PennylaneQNN'
+    qnn_name = 'CudaPennylane'
+    device = 'cpu'
 
     results = dict()
     for r_idx in range(len(r_list)):
@@ -186,7 +187,7 @@ def x_qubits_exp(x_qbits):
             num_points = num_datapoints[num_points_idx]
             risks = []
             for unitary_idx in range(num_unitaries):
-                U = random_unitary_matrix(x_qbits)
+                U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
                 for dataset_idx in range(num_datasets):
                     print(f"Run: r [{r_idx+1}/{len(r_list)}], no. points [{num_points_idx+1}/{len(num_datapoints)}], "
                           f"U [{unitary_idx+1}/{num_unitaries}], dataset [{dataset_idx+1}/{num_datasets}]")
@@ -194,9 +195,17 @@ def x_qubits_exp(x_qbits):
                     r_qbits = int(np.ceil(np.log2(schmidt_rank)))
 
                     x_wires = list(range(x_qbits))
-                    qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers, use_torch=True)
+
+                    if 'cuda' in qnn_name.lower():
+                        qnn = getattr(importlib.import_module('cuda_qnn'), qnn_name)(num_wires=len(x_wires),
+                                                                                     num_layers=num_layers,
+                                                                                     device=device)
+                    else:
+                        qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers,
+                                                                                use_torch=True)
 
                     X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+                    X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
 
                     optimizer = torch.optim.Adam
 
@@ -218,11 +227,16 @@ def x_qubits_exp(x_qbits):
 
     zero_risks = []
     for unitary_idx in range(num_unitaries):
-        U = random_unitary_matrix(x_qbits)
+        U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
         for dataset_idx in range(num_datasets):
             x_wires = list(range(x_qbits))
-            qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers,
-                                                                    use_torch=True)
+            if 'cuda' in qnn_name.lower():
+                qnn = getattr(importlib.import_module('cuda_qnn'), qnn_name)(num_wires=len(x_wires),
+                                                                             num_layers=num_layers,
+                                                                             device=device)
+            else:
+                qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers,
+                                                                        use_torch=True)
             zero_risks.append(quantum_risk(U, qnn.get_matrix_V()))
     zero_risks = np.array(zero_risks)
     complete_total_time = time.time() - complete_starting_time
@@ -240,4 +254,4 @@ def x_qubits_exp(x_qbits):
 
 
 if __name__ == '__main__':
-    x_qubits_exp(3)
+    x_qubits_exp(1)
