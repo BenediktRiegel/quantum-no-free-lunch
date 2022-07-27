@@ -3,6 +3,8 @@ from matplotlib.pyplot import cm
 from typing import List
 import numpy as np
 import json
+from data import *
+from metrics import *
 
 
 # create plot analogous average risk vs. training pairs
@@ -164,6 +166,38 @@ def plot_loss(losses, num_qbits, num_layers, num_points, r_list, name_addition='
         plt.savefig(f"./plots/loss_{num_qbits}_qbits_{num_layers}_layers_{num_points}_datapoints_{2**r_list}_schmidtrank{name_addition}.png")
         plt.cla()
 
+# r=Schmidt rank, t=num points, d=dimensionality
+def calc_lower_bound(r, t, d):
+    numerator = ((r*t)**2) + d + 1  # r^2 * t^2 + d + 1
+    denominator = d*(d+1)           # d*(d+1)
+    return max(0, 1-(numerator/denominator))
+
+
+def generate_risk_plot(results, num_datapoints, x_qbits, r_list):
+    """
+
+    """
+    tableau_palette = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:gray', 'tab:pink', 'tab:olive', 'tab:cyan']
+    markers = generate_markers()[2:]
+    for r_idx in range(len(r_list)):
+        r = r_list[r_idx]
+        rank = 2**r
+        d = 2**x_qbits
+        quantum_bound = [calc_lower_bound(rank, num_points, d) for num_points in num_datapoints]
+        plt.plot(num_datapoints, quantum_bound, label=f"r={rank} bound", marker='.', c=tableau_palette[r_idx], linestyle='dashed')
+    for r_idx in range(len(r_list)):
+        r = r_list[r_idx]
+        rank = 2**r
+        result_mean = [el.mean() for el in results[r]]
+        plt.scatter(num_datapoints, result_mean, label=f"r={rank}", marker=markers[r_idx], c=tableau_palette[r_idx])
+    plt.xlabel('No. of Datapoints')
+    plt.ylabel('Average Risk')
+    plt.legend()
+    plt.title(f'Average Risk for {x_qbits} Qubit Unitary')
+    plt.tight_layout()
+    plt.savefig(f'./plots/{x_qbits}_qubit_exp.png')
+    plt.cla()
+
 
 if __name__ == '__main__':
-    
+    pass

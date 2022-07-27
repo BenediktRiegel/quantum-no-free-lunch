@@ -1,6 +1,6 @@
 import torch
 import pennylane as qml
-from qnn import QNN
+from qnns.qnn import QNN
 from typing import List
 from data import adjoint_unitary_circuit
 from torch.utils.data import DataLoader

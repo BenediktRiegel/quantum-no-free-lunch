@@ -2,8 +2,28 @@ from torch.utils.data import DataLoader
 from scipy.stats import unitary_group
 from utils import *
 from typing import List
+from qnns.qnn import get_qnn
 
 
+def create_unitary_from_circuit(qnn_name, x_wires, num_layers, device='cpu'):
+    """
+    Randomly initializes given circuit with random chosen parameters
+    and create unitary from intitialized circuit
+
+    Parameters
+    ----------
+    qnn_name : str
+        Name of the QNN to be used
+    x_wires: list
+        List of wires of our system
+    num_layers: int
+        Number of layers to use for QNN
+
+    """
+    unitary_qnn = get_qnn(qnn_name, x_wires, num_layers, device=device)
+    unitary_params = torch.tensor(np.random.normal(0, np.pi, unitary_qnn.params.shape), device=device)
+    unitary_qnn.params = unitary_params
+    return unitary_qnn.get_tensor_V(), unitary_params
 
 
 def uniformly_sample_from_base(num_qbits: int, size: int):
@@ -165,6 +185,7 @@ def random_unitary_matrix(x_qbits):
     """
     matrix = unitary_group.rvs(2**x_qbits)
     return matrix
+
 
 
 

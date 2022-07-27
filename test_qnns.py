@@ -3,9 +3,9 @@ import numpy as np
 from metrics import quantum_risk
 import torch
 import matplotlib.pyplot as plt
-import importlib
 from classic_training import train
 from data import uniform_random_data, random_unitary_matrix
+from qnns.qnn import get_qnn
 
 torch.manual_seed(4241)
 np.random.seed(4241)
@@ -51,11 +51,8 @@ def init(num_layers, num_qbits, schmidt_rank, num_points, num_epochs, lr, qnn_na
     x_wires = list(range(num_qbits))  # does not matter which qubits we are using, since we only want the matrix
 
     # construct QNNobject from qnn_name string
-    if 'cuda' in qnn_name.lower():
-        qnn = getattr(importlib.import_module('cuda_qnn'), qnn_name)(num_wires=len(x_wires), num_layers=num_layers, device=device)
-    else:
-        qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers, use_torch=True)
-
+    qnn = get_qnn(qnn_name, x_wires, num_layers, device='cpu')
+    
     X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits))).to(device)
 
     U = torch.tensor(random_unitary_matrix(x_qbits), device=device)

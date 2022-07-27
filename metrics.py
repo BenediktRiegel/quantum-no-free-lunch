@@ -1,9 +1,8 @@
-from qnn import *
+from qnns.qnn import *
 from data import *
 import classic_training
 import quantum_training
 import time
-from logger import Writer
 
 
 def quantum_risk(U, V):

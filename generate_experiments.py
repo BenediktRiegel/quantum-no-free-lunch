@@ -1,9 +1,18 @@
-from config import *
-from  metrics import calc_avg_std_risk
-import json
 import numpy as np
+
+from config import *
+from metrics import calc_avg_std_risk
+import json
 from logger import Writer
-from os.path import exists
+from qnns.qnn import get_qnn
+import time
+from data import *
+import importlib
+from classic_training import train
+from metrics import quantum_risk
+import matplotlib.pyplot as plt
+import torch
+from visualisation import *
 
 
 
@@ -159,25 +168,37 @@ def test_mean_std():
     np.save(save_dir + 'result.npy', all_risks_array)
 
 
-def x_qubits_exp(x_qbits):
-    import torch
-    import time
-    from data import random_unitary_matrix, uniform_random_data
-    import importlib
-    from classic_training import train
-    from metrics import quantum_risk
-    import matplotlib.pyplot as plt
-
+def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler):
+    """
+    Generate experiment data
+    
+    Parameters
+    ------------
+    x_qbits: int
+      Number of qubits for our system
+    num_layers: int
+      Number of layers for qnn
+    num_epochs: int
+      number of epochs to train qnn
+    lr: float
+        learning rate for training
+    num_unitaries: int
+        Number of unitaries to use for each step
+    num_datasets: int
+        Number of datasets to use for each step
+    qnn_name: str
+        Name of QNN to use
+    device: str
+        gpu vs cpu
+    cheat: boolean
+        indicates whether to use random unitary or 'cheat' unitary generated from circuit architecture
+    use_scheduler: boolean
+        use scheduler for training or not
+    """
     complete_starting_time = time.time()
-    num_layers = 1
-    num_epochs = 100
-    lr = 0.1
     r_list = list(range(x_qbits+1))
-    num_unitaries = 5
-    num_datasets = 5
     num_datapoints = list(range(1, 2**x_qbits + 1))
-    qnn_name = 'CudaPennylane'
-    device = 'cpu'
+
 
     results = dict()
     for r_idx in range(len(r_list)):
@@ -187,22 +208,19 @@ def x_qubits_exp(x_qbits):
             num_points = num_datapoints[num_points_idx]
             risks = []
             for unitary_idx in range(num_unitaries):
-                U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
+                r_qbits = int(np.ceil(np.log2(schmidt_rank)))
+                x_wires = list(range(x_qbits))
+                if(cheat):
+                    U, _ = create_unitary_from_circuit(qnn_name, x_wires, num_layers, device='cpu')
+                else:
+                    U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
                 for dataset_idx in range(num_datasets):
                     print(f"Run: r [{r_idx+1}/{len(r_list)}], no. points [{num_points_idx+1}/{len(num_datapoints)}], "
                           f"U [{unitary_idx+1}/{num_unitaries}], dataset [{dataset_idx+1}/{num_datasets}]")
 
-                    r_qbits = int(np.ceil(np.log2(schmidt_rank)))
 
-                    x_wires = list(range(x_qbits))
 
-                    if 'cuda' in qnn_name.lower():
-                        qnn = getattr(importlib.import_module('cuda_qnn'), qnn_name)(num_wires=len(x_wires),
-                                                                                     num_layers=num_layers,
-                                                                                     device=device)
-                    else:
-                        qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers,
-                                                                                use_torch=True)
+                    qnn = get_qnn(qnn_name, x_wires, num_layers, device=device)
 
                     X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
                     X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
@@ -213,9 +231,10 @@ def x_qubits_exp(x_qbits):
                         optimizer = optimizer(qnn.params, lr=lr)
                     else:
                         optimizer = optimizer([qnn.params], lr=lr)
-                    scheduler = None
-                    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, 2, gamma=0.1)
-                    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=True)
+                    if use_scheduler:
+                        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=False)
+                    else:
+                        scheduler = None
 
                     # starting_time = time.time()
                     losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
@@ -223,35 +242,103 @@ def x_qubits_exp(x_qbits):
 
                     risks.append(quantum_risk(U, qnn.get_matrix_V()))
             risks = np.array(risks)
-            results[r_list[r_idx]].append(risks.mean())
+            results[r_list[r_idx]].append(risks)
 
+    # iterate over untrained unitaries
     zero_risks = []
     for unitary_idx in range(num_unitaries):
-        U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
+        x_wires = list(range(x_qbits))
+        if cheat:
+            U = torch.tensor(create_unitary_from_circuit(qnn_name, x_wires, num_layers, device='cpu'),
+                             dtype=torch.complex128, device=device)
+        else:
+            U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
         for dataset_idx in range(num_datasets):
-            x_wires = list(range(x_qbits))
-            if 'cuda' in qnn_name.lower():
-                qnn = getattr(importlib.import_module('cuda_qnn'), qnn_name)(num_wires=len(x_wires),
-                                                                             num_layers=num_layers,
-                                                                             device=device)
-            else:
-                qnn = getattr(importlib.import_module('qnn'), qnn_name)(wires=x_wires, num_layers=num_layers,
-                                                                        use_torch=True)
+            qnn = get_qnn(qnn_name, x_wires, num_layers, device='cpu')
             zero_risks.append(quantum_risk(U, qnn.get_matrix_V()))
     zero_risks = np.array(zero_risks)
-    complete_total_time = time.time() - complete_starting_time
-    print(f'experiment execution took {complete_total_time}s')
 
-    for r_idx in range(len(r_list)):
-        plt.plot([0] + num_datapoints, [zero_risks.mean()] + results[r_list[r_idx]], label=f'r={r_list[r_idx]}', marker='.')
-    plt.xlabel('No. of Datapoints')
-    plt.ylabel('Average Risk')
-    plt.legend()
-    plt.title(f'Average Risk for {x_qbits} Qubit Unitary')
-    plt.tight_layout()
-    plt.savefig(f'./plots/{x_qbits}_qubit_exp.png')
-    plt.cla()
+    for r in r_list:
+        results[r].insert(0, zero_risks)
+
+    return results
+
+
+def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler):
+    """
+    Start experiments, including generation of data as well as plot
+
+    """
+    results = generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler)
+    num_datapoints = list(range(0, 2**x_qbits + 1))
+    r_list = list(range(x_qbits + 1))
+    generate_risk_plot(results, num_datapoints, x_qbits, r_list)
+
+
+
+def map_loss_function():
+    from classic_training import cost_func
+    # Parameters
+    x_qbits = 1
+    r = 0
+    num_points = 64
+    qnn_name = 'CudaPennylane'
+    device = 'cpu'
+    num_layers = 1
+
+    param_idx1 = (0, 0, 0)
+    param_idx2 = (0, 0, 2)
+    param_idx1_range = (0, 20*np.pi, 0.1)   # Lower limit, upper limit, step size
+    param_idx2_range = (0, 20*np.pi, 0.1)   # Lower limit, upper limit, step size
+
+    # qnn
+    x_wires = list(range(x_qbits))
+    qnn = get_qnn(qnn_name, x_wires, num_layers, device='cpu')
+    qnn.params = qnn.params.detach()
+
+
+    # Unitray U
+    U, U_params = create_unitary_from_circuit(qnn_name, x_wires, num_layers, device=device)
+    qnn.params = U_params
+    # U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
+
+
+    # Dataset X
+    schmidt_rank = 2**r
+    r_qbits = int(np.ceil(np.log2(schmidt_rank)))
+    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+    X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+
+    # Labels y conjugated
+    y_conj = torch.matmul(U, X).conj()
+
+    param1_list = np.linspace(param_idx1_range[0], param_idx1_range[1], num=int(param_idx1_range[1]/param_idx1_range[2]), endpoint=False)
+    param2_list = np.linspace(param_idx2_range[0], param_idx2_range[1], num=int(param_idx2_range[1]/param_idx2_range[2]), endpoint=False)
+    result = []
+    for param2 in param2_list:
+        result.append([])
+        qnn.params[param_idx2] = param2
+        for param1 in param1_list:
+            qnn.params[param_idx1] = param1
+            result[-1].append(cost_func(X, y_conj, qnn, device=device))
+
+    import plotly.graph_objects as go
+    import plotly
+
+    result = np.array(result)
+
+    fig = go.Figure(data=[go.Surface(x=param1_list, y=param2_list, z=result)])
+    fig.update_traces(contours_z=dict(show=True, usecolormap=True,
+                                      highlightcolor="limegreen", project_z=True))
+    fig.update_layout(title='Loss Map', autosize=True)
+
+    plotly.offline.plot(fig, filename='./plots/loss_map/loss_map.html')
+    # fig.show()
+
 
 
 if __name__ == '__main__':
-    x_qubits_exp(1)
+    # x_qubits_exp(1)
+    # cheat_qubits_exp()
+    # map_loss_function()
+    exp(1, 1, 1000, 0.1, 10, 10, 'CudaPennylane', 'cpu', False, True)
