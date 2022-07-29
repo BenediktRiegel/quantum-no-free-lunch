@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 from abc import abstractmethod
 from typing import List
 from utils import *
+import matplotlib.pyplot as plt
 
 
 class QNN:
@@ -191,7 +192,7 @@ class SchmidtDataset_std(torch.utils.data.Dataset):
 
 def main():
     from quantum_backends import QuantumBackends
-    num_samples = 2
+    num_samples = 100
     gradient_samples = []
     for i in range(num_samples):
         x_qbits = 3
@@ -220,6 +221,46 @@ def main():
         num_samples, np.mean(np.array(gradient_samples), axis = 0)
     )
     )
+
+    qubits = [2, 3, 4, 5, 6]
+    variances = []
+
+    for num_qubits in qubits:
+        gradient_vals = []
+        for i in range(num_samples):
+            x_qbits = num_qubits
+            schmidt_rank = 1
+            num_points = 32
+            r_qbits = int(np.ceil(np.log2(schmidt_rank)))
+            ref_wires = list(range(x_qbits, x_qbits + r_qbits))
+            X_train = np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits))
+            dataloader = SchmidtDataset(schmidt_rank, num_points, x_qbits, r_qbits)
+            print(dataloader.__getitem__(0))
+            dev = qml.device("default.qubit", wires=x_qbits + len(ref_wires))
+            qnn = BarrenQNN(list(range(x_qbits)), 1, use_torch=True)
+
+            unitary = random_unitary_matrix(x_qbits)
+
+            gradient = train_qnn(qnn, unitary, X_train, ref_wires, dev, 0.1, 2)
+            print('Final gradient', gradient)
+            gradient_vals.append(gradient)
+
+        print(gradient_samples)
+        variances.append(np.mean(np.var(gradient_vals,axis=0)))
+
+    variances = np.array(variances)
+    qubits = np.array(qubits)
+
+    # Fit the semilog plot to a straight line
+    p = np.polyfit(qubits, np.log(variances), 1)
+
+    # Plot the straight line fit to the semilog
+    plt.semilogy(qubits, variances, "o")
+    plt.semilogy(qubits, np.exp(p[0] * qubits + p[1]), "o-.", label="Slope {:3.2f}".format(p[0]))
+    plt.xlabel(r"N Qubits")
+    plt.ylabel(r"Variance")
+    plt.legend()
+    plt.show()
 
 if __name__ == '__main__':
     main()
