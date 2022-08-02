@@ -5,6 +5,7 @@ import numpy as np
 import json
 from data import *
 from metrics import *
+from numpy.polynomial.polynomial import polyfit
 
 
 # create plot analogous average risk vs. training pairs
@@ -171,6 +172,34 @@ def calc_lower_bound(r, t, d):
     numerator = ((r*t)**2) + d + 1  # r^2 * t^2 + d + 1
     denominator = d*(d+1)           # d*(d+1)
     return max(0, 1-(numerator/denominator))
+
+def generate_fluctuation_plot(results, num_datapoints, x_qbits, r_list):
+
+    """
+    Generate fluctuation plot from paper Sharma in appendix
+
+    """
+    tableau_palette = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:gray',
+                       'tab:pink', 'tab:olive', 'tab:cyan']
+    markers = generate_markers()[2:]
+    for r_idx in range(len(r_list)):
+        r = r_list[r_idx]
+        rank = 2 ** r
+        result_std = [el.std() for el in results[r]]
+        plt.scatter(num_datapoints, result_std, label=f"r={rank}", marker=markers[r_idx], c=tableau_palette[r_idx])
+
+        # do linear regression
+        num_datapoints_float = np.arange(2 ** x_qbits + 1)
+        b, m = polyfit(num_datapoints,result_std, 1)
+        plt.plot(num_datapoints, b + m * num_datapoints_float, '-', c=tableau_palette[r_idx])
+
+    plt.xlabel('No. of Datapoints')
+    plt.ylabel('Fluctuation in Risk')
+    plt.legend()
+    plt.title(f'Fluctuation in Risk for {x_qbits} Qubit Unitary')
+    plt.tight_layout()
+    plt.savefig(f'./plots/{x_qbits}_qubit_exp_fluct.png')
+    plt.cla()
 
 
 def generate_risk_plot(results, num_datapoints, x_qbits, r_list):
