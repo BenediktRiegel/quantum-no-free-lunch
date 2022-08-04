@@ -190,8 +190,9 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
         Name of QNN to use
     device: str
         gpu vs cpu
-    cheat: boolean
-        indicates whether to use random unitary or 'cheat' unitary generated from circuit architecture
+    cheat: int
+        indicates whether to use random unitary or 'cheat' unitary generated from circuit architecture.
+        It also specifies the number of layers for the unitary.
     use_scheduler: boolean
         use scheduler for training or not
     """
