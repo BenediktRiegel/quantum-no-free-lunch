@@ -36,6 +36,83 @@ class CudaQNN(QNN):
         return self.qnn()
 
 
+class CudaPlataeu(CudaQNN):
+    """
+    BlateauQNN from paper McClean: Barren plateuas in quantum neural landscape
+    """
+    def __init__(self, num_wires, num_layers: int, device='cpu'):
+        super(CudaPlataeu, self).__init__(num_wires, num_layers, device)
+        self.ent_layers = self.init_entanglement_layers()
+        self.matrix_size = (2**self.num_wires, 2**self.num_wires)
+        self.rotations = self.init_random_rotation_layer()
+        self.fixed_rotations = self.init_fixed_rotations()
+
+    def init_fixed_rotations(self):
+        pi_fourth = torch.tensor(np.pi/4)
+        result = qg.RY(pi_fourth)
+        for i in range(1, self.num_wires):
+            result = torch.kron(
+                result,
+                qg.RY(pi_fourth)
+            )
+        result.to(self.device)
+        return result
+
+    def init_entanglement_layers(self):
+        if self.num_wires > 1:
+            ent_layers = []
+            def ent_layer():
+                if self.num_wires > 1:
+                    for i in range(self.num_wires-1):
+                        c_wire = i
+                        t_wire = (i + 1) % self.num_wires
+                        qml.CZ(wires=[c_wire, t_wire])
+            return torch.tensor(qml.matrix(ent_layer)(), device=self.device, dtype=torch.complex128)
+
+    def init_random_rotation_layer(self):
+        return torch.randint(3, (self.num_wires, self.num_layers))
+
+    def init_params(self):
+        """
+        depth = self.num_wires + 3
+        depth *= self.num_layers
+        std_dev = np.sqrt(1/depth)
+        # std_dev = np.pi
+        # 3 Parameters per qbit per layer, since we have a parameterised X, Y, Z rotation
+
+        params = np.random.normal(0, std_dev, (self.num_wires, self.num_layers, 3))
+        # return Variable(torch.tensor(params, device=self.device), requires_grad=True)
+        """
+
+        params = np.random.normal(0, 2*np.pi, size = (self.num_wires, self.num_layers))
+        return torch.tensor(params, device=self.device, requires_grad=True)
+
+    def layer(self, layer_num):
+        rotation_list = [qg.RX, qg.RY, qg.RZ]
+        rotations = rotation_list[self.rotations[0, layer_num]](self.params[0, layer_num])
+        for i in range(1, self.num_wires):
+            rotations = torch.kron(
+                rotations,
+                rotation_list[self.rotations[i, layer_num]](self.params[i, layer_num])
+            )
+        rotations.to(self.device)
+        result = torch.matmul(rotations, self.fixed_rotations)
+        if self.num_wires > 1:
+            result = torch.matmul(self.ent_layers, result)
+
+        return result
+
+    def qnn(self):
+        result = self.layer(0)
+        for j in range(1, self.num_layers):
+            # if not qg.is_unitary(result):
+            #     print(f"qnn with {j} layers is not unitary")
+            result = torch.matmul(self.layer(j), result)
+        # if not qg.is_unitary(result):
+        #     print(f"qnn is not unitary")
+        return result
+
+
 class CudaPennylane(CudaQNN):
 
     def __init__(self, num_wires, num_layers: int, device='cpu'):
