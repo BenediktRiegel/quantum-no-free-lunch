@@ -3,6 +3,8 @@ from data import *
 import classic_training
 import quantum_training
 import time
+from qiskit.providers.ibmq import least_busy
+from qiskit import IBMQ
 
 
 def quantum_risk(U, V):
@@ -48,25 +50,36 @@ def calc_avg_std_risk(schmidt_rank, num_points, x_qbits, r_qbits,
             else:
                 dataset = SchmidtDataset(schmidt_rank, num_points, x_qbits, r_qbits)
             dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
-            qnn = PennylaneQNN(wires=list(range(x_qbits)), num_layers=num_layers)
-            # Init quantum device
-            ref_wires = list(range(x_qbits, x_qbits+r_qbits))
+            ref_wires = list(range(x_qbits, x_qbits + r_qbits))
+            if(system_type == 'classic'):
+                qnn = get_qnn(qnn_name = 'CudaPennylane', x_wires=list(range(x_qbits)), num_layers=num_layers)
+                dev = qml.device('lightning.qubit', wires=qnn.wires+ref_wires)
+                dev.shots = 1000
 
-            dev = qml.device('lightning.qubit', wires=qnn.wires+ref_wires)
-            dev.shots = 1000
+            if(system_type == 'quantum'):
+                qnn = get_qnn(qnn_name = 'PennylaneQNN', x_wires = list(range(x_qbits)), num_layers=num_layers)
+                print('Initializing Backend')
+                provider = IBMQ.load_account()
+                backend = str(least_busy(provider.backends(simulator=False)))
+                
+                backend = 'ibmq_qasm_simulator'
+                
+                print('Using least busy backend: ', backend)
+                dev = qml.device('qiskit.ibmq', wires = x_qbits + r_qbits, backend=backend)
+            
             # Train and compute risk
             print('training qnn')
             start_time = time.time()
             if(system_type == 'classic'):
                 classic_training.train_qnn(qnn, unitary, dataloader, ref_wires, dev, learning_rate, num_epochs)
             elif(system_type == 'quantum'):
-                quantum_training.train_qnn(qnn, unitary, dataloader, ref_wires, dev, learning_rate, num_epochs)
+                quantum_training.train(qnn, unitary, dataloader, ref_wires, dev, learning_rate, num_epochs)
             
             total_time = time.time() - start_time
             print(f"training took {total_time}s")
             # plt.plot(list(range(len(losses))), losses)
             print('calculating risk')
-            risk = calc_risk_qnn(qnn, unitary)
+            risk = calc_risk_qnn(qnn, torch.from_numpy(unitary))
             all_risks.append(risk)
     # plt.grid(True)
     # plt.show()

@@ -16,7 +16,7 @@ from visualisation import *
 
 
 
-def exp_basis_sharma(config, save_dir):
+def exp_basis_sharma(config, save_dir, system_type='classic'):
     """
     This procudes the results for plotting Figure 2 in the Sharma et al. Paper
     """
@@ -36,6 +36,7 @@ def exp_basis_sharma(config, save_dir):
         r_qbits = i
         # logger.update_schmidt_rank(i)
         for num_points in range(1, config['num_points'] + 1):
+            print(f"Rank {i+1} of {config['x_qbits'] + 1}, num_points {num_points} of {config['num_points']}.")
             # logger.update_num_points(num_points)
             # print(f"num_points {num_points}/{config['num_points']}")
             risk, std = calc_avg_std_risk(rank, num_points, config['x_qbits'],
@@ -43,7 +44,7 @@ def exp_basis_sharma(config, save_dir):
                                  config['num_layers'], config['num_training_data'],
                                  config['learning_rate'], config['num_epochs'],
                                  config['batch_size'],
-                                 False, 0
+                                 False, 0, system_type=system_type
                                  )
             # Store risks directly
             writer.append(f"{risk},{std}")
@@ -65,6 +66,15 @@ def test_fig2():
     print("config generated")
     exp_basis_sharma(config, './experimental_results/exp1/')
 
+def fig2_ibmq():
+    """
+    generates results for fig 2 using ibmq hardware
+    """
+    print("start experiment 1")
+    config = get_exp_one_qubit_unitary_config_ibmq()
+    print("config generated")
+    exp_basis_sharma(config, './experimental_results/exp1/ibmq/', system_type='quantum')
+    
 
 def test_fig3():
     """
@@ -274,8 +284,6 @@ def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_na
     r_list = list(range(x_qbits + 1))
     generate_risk_plot(results, num_datapoints, x_qbits, r_list)
 
-
-
 def map_loss_function():
     from classic_training import cost_func
     # Parameters
@@ -341,4 +349,12 @@ if __name__ == '__main__':
     # x_qubits_exp(1)
     # cheat_qubits_exp()
     # map_loss_function()
-    exp(1, 1, 1000, 0.1, 10, 10, 'CudaPennylane', 'cpu', False, True)
+    #exp(1, 1, 1000, 0.1, 10, 10, 'CudaPennylane', 'cpu', False, True)
+    #results = np.load('experimental_results/exp1/ibmq/result.npy')
+    #x_qbits = 1
+    #num_datapoints = list(range(0, 2**x_qbits + 1))
+    #r_list = list(range(x_qbits + 1))
+    #print(results)
+    #generate_risk_plot(results, num_datapoints, x_qbits, r_list)
+    #fig2_ibmq()
+    plot_fig2()

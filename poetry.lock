@@ -30,7 +30,7 @@ python-versions = ">=3.6"
 numpy = "*"
 
 [package.extras]
-tests = ["coverage", "pytest", "pytest-cov"]
+tests = ["pytest-cov", "pytest", "coverage"]
 
 [[package]]
 name = "cachetools"
@@ -190,8 +190,8 @@ optional = false
 python-versions = "*"
 
 [package.extras]
-develop = ["pytest (>=4.6)", "pycodestyle", "pytest-cov", "codecov", "wheel"]
 tests = ["pytest (>=4.6)"]
+develop = ["wheel", "codecov", "pytest-cov", "pycodestyle", "pytest (>=4.6)"]
 
 [[package]]
 name = "mthree"
@@ -245,7 +245,7 @@ optional = false
 python-versions = ">=2.6,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*"
 
 [package.extras]
-cryptography = ["cryptography (<2.2)", "cryptography"]
+cryptography = ["cryptography", "cryptography (<2.2)"]
 
 [[package]]
 name = "numpy"
@@ -348,6 +348,17 @@ python-versions = ">=3.7"
 [package.extras]
 docs = ["olefile", "sphinx (>=2.4)", "sphinx-copybutton", "sphinx-issues (>=3.0.1)", "sphinx-removed-in", "sphinx-rtd-theme (>=1.0)", "sphinxext-opengraph"]
 tests = ["check-manifest", "coverage", "defusedxml", "markdown2", "olefile", "packaging", "pyroma", "pytest", "pytest-cov", "pytest-timeout"]
+
+[[package]]
+name = "plotly"
+version = "5.9.0"
+description = "An open-source, interactive data visualization library for Python"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+tenacity = ">=6.2.0"
 
 [[package]]
 name = "ply"
@@ -485,10 +496,10 @@ retworkx = ">=0.8.0"
 scipy = ">=0.19,<0.19.1 || >0.19.1"
 
 [package.extras]
-cvx = ["cvxpy (>=1.0.15)"]
-iq = ["scikit-learn (>=0.17)"]
-jit = ["numba"]
 visualization = ["matplotlib (>=2.1)"]
+jit = ["numba"]
+iq = ["scikit-learn (>=0.17)"]
+cvx = ["cvxpy (>=1.0.15)"]
 
 [[package]]
 name = "qiskit-terra"
@@ -562,9 +573,9 @@ python-versions = ">=3.6"
 numpy = ">=1.16.0"
 
 [package.extras]
-all = ["matplotlib (>=3.0)", "pillow (>=5.4)"]
-graphviz = ["pillow (>=5.4)"]
 mpl = ["matplotlib (>=3.0)"]
+graphviz = ["pillow (>=5.4)"]
+all = ["pillow (>=5.4)", "matplotlib (>=3.0)"]
 
 [[package]]
 name = "scipy"
@@ -638,6 +649,17 @@ python-versions = ">=3.7"
 
 [package.dependencies]
 mpmath = ">=0.19"
+
+[[package]]
+name = "tenacity"
+version = "8.0.1"
+description = "Retry code until it succeeds"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.extras]
+doc = ["reno", "sphinx", "tornado (>=4.5)"]
 
 [[package]]
 name = "toml"
@@ -719,7 +741,7 @@ python-versions = ">=3.7"
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.10,<3.11"
-content-hash = "481d52400aea0e1e064d6420613f00aca8ee7012271291a4cbc71e40cb239605"
+content-hash = "59878e2e50fd1f8e2980c81a689566d528dfd63d8d09693c5b766a09b1e0db8c"
 
 [metadata.files]
 appdirs = [
@@ -1160,6 +1182,10 @@ pillow = [
     {file = "Pillow-9.1.1-pp38-pypy38_pp73-win_amd64.whl", hash = "sha256:baf3be0b9446a4083cc0c5bb9f9c964034be5374b5bc09757be89f5d2fa247b8"},
     {file = "Pillow-9.1.1.tar.gz", hash = "sha256:7502539939b53d7565f3d11d87c78e7ec900d3c72945d4ee0e2f250d598309a0"},
 ]
+plotly = [
+    {file = "plotly-5.9.0-py2.py3-none-any.whl", hash = "sha256:9acf168915101caac82ed6da3390840c622d9d4e4a78cbe1260f52501efc3117"},
+    {file = "plotly-5.9.0.tar.gz", hash = "sha256:b0536e72bbc0b3cf169ac1fd00759d77aae7bb12ae378cdc75c5dc362f5de576"},
+]
 ply = [
     {file = "ply-3.11-py2.py3-none-any.whl", hash = "sha256:096f9b8350b65ebd2fd1346b12452efe5b9607f7482813ffca50c22722a807ce"},
     {file = "ply-3.11.tar.gz", hash = "sha256:00c7c1aaa88358b9c765b6d3000c6eec0ba42abca5351b095321aef446081da3"},
@@ -1430,6 +1456,10 @@ symengine = [
 sympy = [
     {file = "sympy-1.10.1-py3-none-any.whl", hash = "sha256:df75d738930f6fe9ebe7034e59d56698f29e85f443f743e51e47df0caccc2130"},
     {file = "sympy-1.10.1.tar.gz", hash = "sha256:5939eeffdf9e152172601463626c022a2c27e75cf6278de8d401d50c9d58787b"},
+]
+tenacity = [
+    {file = "tenacity-8.0.1-py3-none-any.whl", hash = "sha256:f78f4ea81b0fabc06728c11dc2a8c01277bfc5181b321a4770471902e3eb844a"},
+    {file = "tenacity-8.0.1.tar.gz", hash = "sha256:43242a20e3e73291a28bcbcacfd6e000b02d3857a9a9fff56b297a27afdc932f"},
 ]
 toml = [
     {file = "toml-0.10.2-py2.py3-none-any.whl", hash = "sha256:806143ae5bfb6a3c6e736a764057db0e6a0e05e338b5630894a5f779cabb4f9b"},

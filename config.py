@@ -34,6 +34,10 @@ def get_exp_one_qubit_unitary_config():
     return gen_config(2, 2, 1, 1, 10, 10, 10, 0)
 
 
+def get_exp_one_qubit_unitary_config_ibmq():
+    # returns config for 1 qubit unitary experiments suitable for ibmq hardware
+    return gen_config(2, 2, 1, 1, 1, 1, 1, 0, num_epochs=100)
+
 def get_exp_six_qubit_unitary_config():
     # Returns the config for the 6 qubit unitary experiment (fig3 in Sharma et al)
     return gen_config(1, 1, 6, 6, 10, 10, 100, 1, 0, 0.01, 8, 120, True, 'SGD')

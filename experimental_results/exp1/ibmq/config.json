@@ -1,0 +1,1 @@
+{"learning_rate": 0.01, "batch_size": 8, "num_epochs": 100, "shuffle": true, "schmidt_rank": 2, "num_points": 2, "x_qbits": 1, "r_qbits": 1, "num_unitaries": 1, "num_layers": 1, "num_training_data": 1, "mean": 0, "std": 0, "optimizer": "COBYLA"}
