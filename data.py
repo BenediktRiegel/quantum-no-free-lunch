@@ -43,7 +43,7 @@ def uniformly_sample_from_base(num_qbits: int, size: int):
     if num_qbits == 0:
         return np.ones((1, 1))
     # uniform sampling of basis vectors
-    num_bits = np.power(2, num_qbits)
+    num_bits = int(np.power(2, num_qbits))
     base = []
     random_ints = np.random.choice(num_bits, size, replace=False)
     transform_matrix = unitary_group.rvs(num_bits)
@@ -97,7 +97,7 @@ def uniform_random_data(schmidt_rank: int, size: int, x_qbits: int, r_qbits: int
 
 
 
-def create_mean_std(mean, std, num_samples, max_rank, counter):
+def create_mean_std(mean, std, num_samples, max_rank, counter=0):
     """
     (Approximately) generates a set of integers in a specified range with certain mean and standard deviation
 
@@ -117,44 +117,47 @@ def create_mean_std(mean, std, num_samples, max_rank, counter):
     min_dist = min(mean - 1, max_rank - mean)
     if(min_dist <= 3 * std):
         raise ValueError(f'Bad standard deviation')
-    samples = np.random.normal(loc=0.0, scale= std, size=num_samples)
+    samples = np.random.normal(loc=0.0, scale=std, size=num_samples)
 
     #samples = np.random.randint(mean - 5 * std, mean + 5 * std, size=num_samples)
 
-    print('testing of mean_std data generation')
+    # print('testing of mean_std data generation')
     actual_mean = np.mean(samples)
     actual_std = np.std(samples)
     #print(samples)
-    print("Initial samples stats   : mean = {:.4f} stdv = {:.4f}".format(actual_mean, actual_std))
+    # print("Initial samples stats   : mean = {:.4f} stdv = {:.4f}".format(actual_mean, actual_std))
     zero_mean_samples = samples - (actual_mean)
 
     zero_mean_mean = np.mean(zero_mean_samples)
     zero_mean_std = np.std(zero_mean_samples)
     #print(zero_mean_samples)
-    print("True zero samples stats : mean = {:.4f} stdv = {:.4f}".format(zero_mean_mean, zero_mean_std))
+    # print("True zero samples stats : mean = {:.4f} stdv = {:.4f}".format(zero_mean_mean, zero_mean_std))
 
-    scaled_samples = zero_mean_samples * (std/zero_mean_std)
+    print(f"std: {std}, zero_mean_std: {zero_mean_std}")
+    scaled_samples = zero_mean_samples
+    if zero_mean_std != 0:
+        scaled_samples *= (std / zero_mean_std)
     scaled_mean = np.mean(scaled_samples)
     scaled_std = np.std(scaled_samples)
     #print(scaled_samples)
-    print("Scaled samples stats    : mean = {:.4f} stdv = {:.4f}".format(scaled_mean, scaled_std))
+    # print("Scaled samples stats    : mean = {:.4f} stdv = {:.4f}".format(scaled_mean, scaled_std))
 
     final_samples = scaled_samples + mean
     final_samples = np.round_(final_samples)
     final_mean = np.mean(final_samples)
     final_std = np.std(final_samples)
-    print(final_samples)
-    print("Final samples stats     : mean = {:.4f} stdv = {:.4f}".format(final_mean, final_std))
+    # print(final_samples)
+    # print("Final samples stats     : mean = {:.4f} stdv = {:.4f}".format(final_mean, final_std))
 
     if any(number <= 0 or number > max_rank for number in final_samples):
         counter = counter + 1
-        final_samples , counter = create_mean_std(mean, std, num_samples, max_rank, counter)
+        final_samples, counter = create_mean_std(mean, std, num_samples, max_rank, counter)
 
     return final_samples, counter
 
 
 #create dataset of size <size> with a mean schmidt rank
-def uniform_random_data_mean(mean, std, num_samples, x_qbits, r_qbits):
+def uniform_random_data_mean(mean, std, num_samples, x_qbits, r_qbits, max_rank):
     """
     Create dataset of specified size with variable Schmidt rank with certain mean and standard
     deviation
@@ -169,9 +172,10 @@ def uniform_random_data_mean(mean, std, num_samples, x_qbits, r_qbits):
         Desired input size of circuit and reference system
     """
     data = []
-    numbers_mean_std, counter = create_mean_std(mean, std, num_samples)
+    numbers_mean_std, counter = create_mean_std(mean, std, num_samples, max_rank)
+    r_qbits = int(np.ceil(np.log2(numbers_mean_std.max())))
     for i in range(len(numbers_mean_std)):
-        schmidt_rank = numbers_mean_std[i]
+        schmidt_rank = int(numbers_mean_std[i])
         data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits))
     return data
 
