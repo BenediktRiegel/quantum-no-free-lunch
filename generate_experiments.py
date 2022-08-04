@@ -168,7 +168,7 @@ def test_mean_std():
     np.save(save_dir + 'result.npy', all_risks_array)
 
 
-def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler):
+def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, writer=None):
     """
     Generate experiment data
     
@@ -195,6 +195,10 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
     use_scheduler: boolean
         use scheduler for training or not
     """
+    if writer:
+        writer.append_line(f"x_qbits={x_qbits}, num_layers={num_layers}, num_epochs={num_epochs}, lr={lr}, "
+                      f"num_unitaries={num_unitaries}, num_datasets={num_datasets}, qnn_name={qnn_name}, "
+                      f"device={device}, cheat={cheat}, use_scheduler={use_scheduler}")
     complete_starting_time = time.time()
     r_list = list(range(x_qbits+1))
     num_datapoints = list(range(1, 2**x_qbits + 1))
@@ -210,20 +214,24 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
             for unitary_idx in range(num_unitaries):
                 r_qbits = int(np.ceil(np.log2(schmidt_rank)))
                 x_wires = list(range(x_qbits))
-                if(cheat):
-                    U, _ = create_unitary_from_circuit(qnn_name, x_wires, num_layers, device='cpu')
+                if cheat:
+                    U, unitary_qnn_params = create_unitary_from_circuit(qnn_name, x_wires, cheat, device='cpu')
+                    # torch.save(unitary_qnn_params, 'files_for_alex/unitary_qnn_params.pt')
+                    # torch.save(U, 'files_for_alex/unitary_U.pt')
                 else:
                     U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
                 for dataset_idx in range(num_datasets):
                     print(f"Run: r [{r_idx+1}/{len(r_list)}], no. points [{num_points_idx+1}/{len(num_datapoints)}], "
                           f"U [{unitary_idx+1}/{num_unitaries}], dataset [{dataset_idx+1}/{num_datasets}]")
-
+                    info_string = f"schmidt_rank={schmidt_rank}, num_points={num_points}, U=[{unitary_idx+1}/{num_unitaries}], dataset=[{dataset_idx+1}/{num_datasets}]"
 
 
                     qnn = get_qnn(qnn_name, x_wires, num_layers, device=device)
+                    # torch.save(qnn.params, 'files_for_alex/qnn_params.pt')
 
                     X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
                     X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                    # torch.save(X, 'files_for_alex/dataset.pt')
 
                     optimizer = torch.optim.Adam
 
@@ -236,11 +244,16 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
                     else:
                         scheduler = None
 
-                    # starting_time = time.time()
+                    starting_time = time.time()
                     losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
-                    # train_time = time.time() - starting_time
+                    train_time = time.time() - starting_time
+                    print(f"\tTraining took {train_time}s")
 
                     risks.append(quantum_risk(U, qnn.get_matrix_V()))
+
+                    # Log everything
+                    if writer:
+                        writer.append_line(info_string + f", losses={losses}, risk={risks[-1]}, train_time={train_time}")
             risks = np.array(risks)
             results[r_list[r_idx]].append(risks)
 
@@ -249,27 +262,32 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
     for unitary_idx in range(num_unitaries):
         x_wires = list(range(x_qbits))
         if cheat:
-            U = torch.tensor(create_unitary_from_circuit(qnn_name, x_wires, num_layers, device='cpu'),
-                             dtype=torch.complex128, device=device)
+            U, _ = create_unitary_from_circuit(qnn_name, x_wires, cheat, device='cpu')
         else:
             U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
         for dataset_idx in range(num_datasets):
             qnn = get_qnn(qnn_name, x_wires, num_layers, device='cpu')
             zero_risks.append(quantum_risk(U, qnn.get_matrix_V()))
     zero_risks = np.array(zero_risks)
+    if writer:
+        writer.append_line(f"zero_risks={zero_risks}")
 
     for r in r_list:
         results[r].insert(0, zero_risks)
+    complete_time = time.time()-complete_starting_time
+    print(f"Complete experiment took {complete_time}s")
+    if writer:
+        writer.append_line(f"complete_time={complete_time}")
 
     return results
 
 
-def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler):
+def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, writer=None):
     """
     Start experiments, including generation of data as well as plot
 
     """
-    results = generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler)
+    results = generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, writer=writer)
     num_datapoints = list(range(0, 2**x_qbits + 1))
     r_list = list(range(x_qbits + 1))
     generate_risk_plot(results, num_datapoints, x_qbits, r_list)
@@ -341,4 +359,5 @@ if __name__ == '__main__':
     # x_qubits_exp(1)
     # cheat_qubits_exp()
     # map_loss_function()
-    exp(1, 1, 1000, 0.1, 10, 10, 'CudaPennylane', 'cpu', False, True)
+    writer = Writer('./experimental_results/4_qubit_exp_45_layer.txt')
+    exp(4, 45, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, writer=writer)
