@@ -21,9 +21,11 @@ def create_unitary_from_circuit(qnn_name, x_wires, num_layers, device='cpu'):
 
     """
     unitary_qnn = get_qnn(qnn_name, x_wires, num_layers, device=device)
-    unitary_params = torch.tensor(np.random.normal(0, np.pi, unitary_qnn.params.shape), device=device)
-    unitary_qnn.params = unitary_params
-    return unitary_qnn.get_tensor_V(), unitary_params
+    if isinstance(unitary_qnn.params, list):
+        unitary_qnn.params = [torch.tensor(np.random.normal(0, np.pi, unitary_qnn.params[i].shape), device=device) for i in range(len(unitary_qnn.params))]
+    else:
+        unitary_qnn.params = torch.tensor(np.random.normal(0, np.pi, unitary_qnn.params.shape), device=device)
+    return unitary_qnn.get_tensor_V(), unitary_qnn.params
 
 
 def uniformly_sample_from_base(num_qbits: int, size: int):
