@@ -13,6 +13,7 @@ from metrics import quantum_risk
 import matplotlib.pyplot as plt
 import torch
 from visualisation import *
+from copy import deepcopy
 
 
 
@@ -168,7 +169,8 @@ def test_mean_std():
     np.save(save_dir + 'result.npy', all_risks_array)
 
 
-def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, writer=None):
+def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
+                       device, cheat, use_scheduler, optimizer, std=False, writer=None):
     """
     Generate experiment data
     
@@ -222,39 +224,61 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
                 else:
                     U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
                 for dataset_idx in range(num_datasets):
-                    print(f"Run: r [{r_idx+1}/{len(r_list)}], no. points [{num_points_idx+1}/{len(num_datapoints)}], "
-                          f"U [{unitary_idx+1}/{num_unitaries}], dataset [{dataset_idx+1}/{num_datasets}]")
-                    info_string = f"schmidt_rank={schmidt_rank}, num_points={num_points}, U=[{unitary_idx+1}/{num_unitaries}], dataset=[{dataset_idx+1}/{num_datasets}]"
-
+                    print(
+                        f"Run: r [{r_idx + 1}/{len(r_list)}], no. points [{num_points_idx + 1}/{len(num_datapoints)}], "
+                        f"U [{unitary_idx + 1}/{num_unitaries}], dataset [{dataset_idx + 1}/{num_datasets}]")
+                    info_string = f"schmidt_rank={schmidt_rank}, num_points={num_points}, U=[{unitary_idx + 1}/{num_unitaries}], dataset=[{dataset_idx + 1}/{num_datasets}]"
 
                     qnn = get_qnn(qnn_name, x_wires, num_layers, device=device)
                     # torch.save(qnn.params, 'files_for_alex/qnn_params.pt')
-
-                    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
-                    X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
-                    # torch.save(X, 'files_for_alex/dataset.pt')
-
-                    optimizer = torch.optim.Adam
+                    if optimizer.lower() == 'adam':
+                        optimizer = torch.optim.Adam
+                    else:
+                        optimizer = torch.optim.SGD
 
                     if isinstance(qnn.params, list):
                         optimizer = optimizer(qnn.params, lr=lr)
                     else:
                         optimizer = optimizer([qnn.params], lr=lr)
                     if use_scheduler:
-                        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10, min_lr=1e-10, verbose=False)
+                        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10,
+                                                                               min_lr=1e-10,
+                                                                               verbose=False)
                     else:
                         scheduler = None
 
-                    starting_time = time.time()
-                    losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
-                    train_time = time.time() - starting_time
-                    print(f"\tTraining took {train_time}s")
+                    if not std:
+                        X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+                        X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                        starting_time = time.time()
+                        losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
+                        train_time = time.time() - starting_time
+                        print(f"\tTraining took {train_time}s")
 
-                    risks.append(quantum_risk(U, qnn.get_matrix_V()))
-
+                        risk = quantum_risk(U, qnn.get_matrix_V())
+                        risks.append(risk)
+                    else:
+                        losses = []
+                        risk = []
+                        train_time = []
+                        max_rank = 2 ** x_qbits
+                        for std in range(0, max_rank):
+                            X = torch.from_numpy(np.array(create_mean_std(schmidt_rank, std, num_points, max_rank)))
+                            X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                            starting_time = time.time()
+                            loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
+                            train_time_std = time.time() - starting_time
+                            print(f"\tTraining took {train_time}s")
+                            risk_std = quantum_risk(U, qnn.get_matrix_V())
+                            losses.append(loss_std)
+                            risk.append(risk_std)
+                            train_time.append(train_time_std)
+                        risks.append(risk)
                     # Log everything
                     if writer:
-                        writer.append_line(info_string + f", losses={losses}, risk={risks[-1]}, train_time={train_time}")
+                        writer.append_line(
+                            info_string + f", losses={losses}, risk={risks[-1]}, train_time={train_time}")
+
             risks = np.array(risks)
             results[r_list[r_idx]].append(risks)
 
@@ -283,32 +307,103 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
     return results
 
 
-def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, writer=None):
+def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, std=False, writer=None):
     """
     Start experiments, including generation of data as well as plot
 
     """
-    results = generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, writer=writer)
+    results = generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, std=std, writer=writer)
     num_datapoints = list(range(0, 2**x_qbits + 1))
     r_list = list(range(x_qbits + 1))
     generate_risk_plot(results, num_datapoints, x_qbits, r_list)
 
 
-
-def map_loss_function():
+def gradient_3D_plot(U=None):
     from classic_training import cost_func
     # Parameters
-    x_qbits = 1
+    x_qbits = 2
     r = 0
-    num_points = 64
-    qnn_name = 'CudaPennylane'
+    num_points = 4
+    qnn_name = 'CudaPlataeu'
     device = 'cpu'
     num_layers = 1
 
-    param_idx1 = (0, 0, 0)
-    param_idx2 = (0, 0, 2)
-    param_idx1_range = (0, 20*np.pi, 0.1)   # Lower limit, upper limit, step size
-    param_idx2_range = (0, 20*np.pi, 0.1)   # Lower limit, upper limit, step size
+    param_idx1 = (0, 0)
+    param_idx2 = (1, 0)
+    param_idx1_range = (0, 2*np.pi, 0.1)   # Lower limit, upper limit, step size
+    param_idx2_range = (0, 2*np.pi, 0.1)   # Lower limit, upper limit, step size
+
+    # qnn
+    x_wires = list(range(x_qbits))
+    qnn = get_qnn(qnn_name, x_wires, num_layers, device='cpu')
+    qnn.params = qnn.params.detach()
+
+    # Unitray U
+    if U is None:
+        # U, U_params = create_unitary_from_circuit(qnn_name, x_wires, num_layers, device=device)
+        # qnn.params = U_params
+        U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
+
+
+    # Dataset X
+    schmidt_rank = 2**r
+    r_qbits = int(np.ceil(np.log2(schmidt_rank)))
+    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+    X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+
+    # Labels y conjugated
+    y_conj = torch.matmul(U, X).conj()
+
+    param1_list = np.linspace(param_idx1_range[0], param_idx1_range[1], num=int(param_idx1_range[1]/param_idx1_range[2]), endpoint=False)
+    param2_list = np.linspace(param_idx2_range[0], param_idx2_range[1], num=int(param_idx2_range[1]/param_idx2_range[2]), endpoint=False)
+    result = []
+    params = deepcopy(qnn.params).detach()
+    for param2 in param2_list:
+        result.append([])
+        params[param_idx2] = param2
+        for param1 in param1_list:
+            # print(qnn.params)
+            # opt = torch.optim.Adam([qnn.params], lr= 0.1)
+            # opt.zero_grad()
+            params[param_idx1] = param1
+            qnn.params = params.clone().detach().requires_grad_(True)
+            loss = cost_func(X, y_conj, qnn, device = device)
+            #print('backprop')
+            loss.backward()
+
+            # print('Gradients', np.array(qnn.params.grad))
+            result[-1].append(np.linalg.norm(np.array(qnn.params.grad)))    #cost_func(X,y_conj,qnn, device)
+
+    import plotly.graph_objects as go
+    import plotly
+
+    result = np.array(result)
+
+    fig = go.Figure(data=[go.Surface(x=param1_list, y=param2_list, z=result)])
+    fig.update_traces(contours_z=dict(show=True, usecolormap=True,
+                                      highlightcolor="limegreen", project_z=True))
+    fig.update_layout(title='Gradient Map', autosize=True)
+
+    plotly.offline.plot(fig, filename='./plots/loss_map/gradient_map.html')
+    # fig.show()
+
+
+
+
+def map_loss_function(U=None):
+    from classic_training import cost_func
+    # Parameters
+    x_qbits = 2
+    r = 0
+    num_points = 4
+    qnn_name = 'CudaPlataeu'
+    device = 'cpu'
+    num_layers = 1
+
+    param_idx1 = (0, 0)
+    param_idx2 = (1, 0)
+    param_idx1_range = (0, 2*np.pi, 0.1)   # Lower limit, upper limit, step size
+    param_idx2_range = (0, 2*np.pi, 0.1)   # Lower limit, upper limit, step size
 
     # qnn
     x_wires = list(range(x_qbits))
@@ -317,9 +412,10 @@ def map_loss_function():
 
 
     # Unitray U
-    U, U_params = create_unitary_from_circuit(qnn_name, x_wires, num_layers, device=device)
-    qnn.params = U_params
-    # U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
+    if U is None:
+        # U, U_params = create_unitary_from_circuit(qnn_name, x_wires, num_layers, device=device)
+        # qnn.params = U_params
+        U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
 
 
     # Dataset X
@@ -357,8 +453,9 @@ def map_loss_function():
 
 
 if __name__ == '__main__':
-    # x_qubits_exp(1)
-    # cheat_qubits_exp()
-    # map_loss_function()
-    writer = Writer('./experimental_results/4_qubit_exp_45_layer.txt')
-    exp(4, 45, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, writer=writer)
+    U = torch.tensor(random_unitary_matrix(2), dtype=torch.complex128, device='cpu')
+    map_loss_function(U=U)
+    gradient_3D_plot(U=U)
+
+    exp(2, 1, 1000, 0.1, 50, 1, 'CudaPlataeu', 'cpu', None, True, std=False,
+        writer=Writer('./experimental_results/4_qubit_exp_cuda_plateau_sgd_fixed.txt'))
