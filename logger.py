@@ -10,3 +10,9 @@ class Writer:
         with open(self.file_path, 'a') as f:
             f.write(text + '\t')
             f.close()
+
+    def append_line(self, line):
+        line = str(line)+'\n'
+        with open(self.file_path, 'a') as f:
+            f.write(line)
+            f.close()
