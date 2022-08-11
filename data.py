@@ -133,7 +133,7 @@ def create_mean_std(mean, std, num_samples, max_rank, counter=0):
     #print(zero_mean_samples)
     # print("True zero samples stats : mean = {:.4f} stdv = {:.4f}".format(zero_mean_mean, zero_mean_std))
 
-    print(f"std: {std}, zero_mean_std: {zero_mean_std}")
+    # print(f"std: {std}, zero_mean_std: {zero_mean_std}")
     scaled_samples = zero_mean_samples
     if zero_mean_std != 0:
         scaled_samples *= (std / zero_mean_std)
