@@ -115,7 +115,7 @@ def create_mean_std(mean, std, num_samples, max_rank, counter=0):
     data = []
 
     min_dist = min(mean - 1, max_rank - mean)
-    if(min_dist <= 3 * std):
+    if(min_dist < 3 * std):
         raise ValueError(f'Bad standard deviation')
     samples = np.random.normal(loc=0.0, scale=std, size=num_samples)
 
@@ -151,9 +151,9 @@ def create_mean_std(mean, std, num_samples, max_rank, counter=0):
 
     if any(number <= 0 or number > max_rank for number in final_samples):
         counter = counter + 1
-        final_samples, counter = create_mean_std(mean, std, num_samples, max_rank, counter)
+        final_samples, counter, final_std = create_mean_std(mean, std, num_samples, max_rank, counter)
 
-    return final_samples, counter
+    return final_samples, counter, final_std
 
 
 #create dataset of size <size> with a mean schmidt rank
@@ -172,12 +172,12 @@ def uniform_random_data_mean(mean, std, num_samples, x_qbits, r_qbits, max_rank)
         Desired input size of circuit and reference system
     """
     data = []
-    numbers_mean_std, counter = create_mean_std(mean, std, num_samples, max_rank)
+    numbers_mean_std, counter, final_std = create_mean_std(mean, std, num_samples, max_rank)
     r_qbits = int(np.ceil(np.log2(numbers_mean_std.max())))
     for i in range(len(numbers_mean_std)):
         schmidt_rank = int(numbers_mean_std[i])
         data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits))
-    return data
+    return data, final_std
 
 
 def random_unitary_matrix(x_qbits):
