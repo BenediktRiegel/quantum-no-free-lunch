@@ -170,7 +170,7 @@ def test_mean_std():
 
 
 def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
-                       device, cheat, use_scheduler, opt_name, std=False, writer=None):
+                       device, cheat, use_scheduler, opt_name, scheduler_factor=0.8, std=False, writer=None):
     """
     Generate experiment data
     
@@ -241,7 +241,10 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
                     else:
                         optimizer = optimizer([qnn.params], lr=lr)
                     if use_scheduler:
-                        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10,
+                        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10,
+                        #                                                        min_lr=1e-10,
+                        #                                                        verbose=False)
+                        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=scheduler_factor, patience=3,
                                                                                min_lr=1e-10,
                                                                                verbose=False)
                     else:
@@ -250,6 +253,10 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
                     if not std:
                         X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
                         X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                        if r_idx == 2 and num_points_idx == 3:
+                            torch.save(qnn.params, './data/qnn_params.pt')
+                            torch.save(U, './data/U.pt')
+                            torch.save(X, './data/X.pt')
                         starting_time = time.time()
                         losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
                         train_time = time.time() - starting_time
@@ -257,6 +264,13 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
 
                         risk = quantum_risk(U, qnn.get_matrix_V())
                         risks.append(risk)
+                        # Log everything
+                        if writer:
+                            losses_str = str(losses).replace(' ', '')
+                            qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                            u_str = str(qnn.params.tolist()).replace(' ', '')
+                            writer.append_line(
+                                info_string + f", std={0}, losses={losses_str}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}")
                     else:
                         losses = []
                         risk = []
@@ -276,11 +290,14 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
                             losses.append(loss_std)
                             risk.append(risk_std)
                             train_time.append(train_time_std)
+                            # Log everything
+                            if writer:
+                                losses_str = str(losses).replace(' ', '')
+                                qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                                u_str = str(qnn.params.tolist()).replace(' ', '')
+                                writer.append_line(
+                                    info_string + f", std={std}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}")
                         risks.append(risk)
-                    # Log everything
-                    if writer:
-                        writer.append_line(
-                            info_string + f", losses={losses}, risk={risks[-1]}, train_time={train_time}")
 
             risks = np.array(risks)
             results[r_list[r_idx]].append(risks)
@@ -310,29 +327,29 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
     return results
 
 
-def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, optimizer, std=False, writer=None):
+def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, optimizer, scheduler_factor=0.8, std=False, writer=None):
     """
     Start experiments, including generation of data as well as plot
 
     """
-    results = generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, optimizer, std=std, writer=writer)
+    results = generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, optimizer, scheduler_factor=scheduler_factor, std=std, writer=writer)
     num_datapoints = list(range(0, 2**x_qbits + 1))
     r_list = list(range(x_qbits + 1))
     generate_risk_plot(results, num_datapoints, x_qbits, r_list)
 
 
-def gradient_3D_plot(U=None):
+def gradient_3D_plot(U=None, func=None, name='gradient_map'):
     from classic_training import cost_func
     # Parameters
-    x_qbits = 2
+    x_qbits = 1
     r = 0
-    num_points = 4
-    qnn_name = 'CudaPlataeu'
+    num_points = 2
+    qnn_name = 'CudaPennylane'
     device = 'cpu'
     num_layers = 1
 
-    param_idx1 = (0, 0)
-    param_idx2 = (1, 0)
+    param_idx1 = (0, 0, 0)
+    param_idx2 = (0, 0, 1)
     param_idx1_range = (0, 2*np.pi, 0.1)   # Lower limit, upper limit, step size
     param_idx2_range = (0, 2*np.pi, 0.1)   # Lower limit, upper limit, step size
 
@@ -340,6 +357,7 @@ def gradient_3D_plot(U=None):
     x_wires = list(range(x_qbits))
     qnn = get_qnn(qnn_name, x_wires, num_layers, device='cpu')
     qnn.params = qnn.params.detach()
+    qnn.params[0, 0, 2] = 0
 
     # Unitray U
     if U is None:
@@ -370,7 +388,10 @@ def gradient_3D_plot(U=None):
             # opt.zero_grad()
             params[param_idx1] = param1
             qnn.params = params.clone().detach().requires_grad_(True)
-            loss = cost_func(X, y_conj, qnn, device = device)
+            if func is None:
+                loss = cost_func(X, y_conj, qnn, device=device)
+            else:
+                loss = func(cost_func(X, y_conj, qnn, device=device))
             #print('backprop')
             loss.backward()
 
@@ -387,24 +408,24 @@ def gradient_3D_plot(U=None):
                                       highlightcolor="limegreen", project_z=True))
     fig.update_layout(title='Gradient Map', autosize=True)
 
-    plotly.offline.plot(fig, filename='./plots/loss_map/gradient_map.html')
+    plotly.offline.plot(fig, filename=f'./plots/loss_map/{name}.html')
     # fig.show()
 
 
 
 
-def map_loss_function(U=None):
+def map_loss_function(U=None, func=None, name='loss_map'):
     from classic_training import cost_func
     # Parameters
-    x_qbits = 2
+    x_qbits = 1
     r = 0
-    num_points = 4
-    qnn_name = 'CudaPlataeu'
+    num_points = 2
+    qnn_name = 'CudaPennylane'
     device = 'cpu'
     num_layers = 1
 
-    param_idx1 = (0, 0)
-    param_idx2 = (1, 0)
+    param_idx1 = (0, 0, 0)
+    param_idx2 = (0, 0, 1)
     param_idx1_range = (0, 2*np.pi, 0.1)   # Lower limit, upper limit, step size
     param_idx2_range = (0, 2*np.pi, 0.1)   # Lower limit, upper limit, step size
 
@@ -412,6 +433,7 @@ def map_loss_function(U=None):
     x_wires = list(range(x_qbits))
     qnn = get_qnn(qnn_name, x_wires, num_layers, device='cpu')
     qnn.params = qnn.params.detach()
+    qnn.params[0, 0, 2] = 0
 
 
     # Unitray U
@@ -438,7 +460,10 @@ def map_loss_function(U=None):
         qnn.params[param_idx2] = param2
         for param1 in param1_list:
             qnn.params[param_idx1] = param1
-            result[-1].append(cost_func(X, y_conj, qnn, device=device))
+            if func is None:
+                result[-1].append(cost_func(X, y_conj, qnn, device=device))
+            else:
+                result[-1].append(func(cost_func(X, y_conj, qnn, device=device)))
 
     import plotly.graph_objects as go
     import plotly
@@ -450,15 +475,46 @@ def map_loss_function(U=None):
                                       highlightcolor="limegreen", project_z=True))
     fig.update_layout(title='Loss Map', autosize=True)
 
-    plotly.offline.plot(fig, filename='./plots/loss_map/loss_map.html')
+    plotly.offline.plot(fig, filename=f'./plots/loss_map/{name}.html')
     # fig.show()
 
 
+def power_func(power):
+    def func(x):
+        return torch.float_power(torch.abs(x), power)
+    return func
+
+
+def root_func(power):
+    def func(x):
+        return x-x if x < 1e-2 else torch.float_power(torch.abs(x), 1/power)
+    return func
+
 
 if __name__ == '__main__':
-    # U = torch.tensor(random_unitary_matrix(2), dtype=torch.complex128, device='cpu')
+
+    # U = torch.tensor(random_unitary_matrix(1), dtype=torch.complex128, device='cpu')
+    # qnn = get_qnn('CudaPennylane', [0], 1)
+    # qnn.params = qnn.params.detach()
+    # qnn.params[0, 0, 2] = 0
+    # U = qnn.get_tensor_V()
     # map_loss_function(U=U)
     # gradient_3D_plot(U=U)
-
-    exp(4, 40, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', std=True,
-        writer=Writer('./experimental_results/4_qubit_exp_std.txt'))
+    # map_loss_function(U=U, func=root_func(2), name='loss_map_squared')
+    # gradient_3D_plot(U=U, func=root_func(2), name='gradient_map_squared')
+    # # map_loss_function(U=U, func=root_func(3), name='loss_map_pow_3')
+    # # gradient_3D_plot(U=U, func=root_func(3), name='gradient_map_pow_3')
+    # # map_loss_function(U=U, func=root_func(4), name='loss_map_pow_4')
+    # # gradient_3D_plot(U=U, func=root_func(4), name='gradient_map_pow_4')
+    # # map_loss_function(U=U, func=root_func(5), name='loss_map_pow_5')
+    # # gradient_3D_plot(U=U, func=root_func(5), name='gradient_map_pow_5')
+    # map_loss_function(U=U, func=root_func(7), name='loss_map_pow_7')
+    # gradient_3D_plot(U=U, func=root_func(7), name='gradient_map_pow_7')
+    # map_loss_function(U=U, func=root_func(100), name='loss_map_pow_100')
+    # gradient_3D_plot(U=U, func=root_func(100), name='gradient_map_pow_100')
+    scheduler_factor = 0.8
+    lr = 0.1
+    exp(3, 25, 1000, lr, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', scheduler_factor=scheduler_factor, std=False,
+        writer=Writer(f'./experimental_results/4_qubit_exp_45_{scheduler_factor}_3_lr={lr}.txt'))
+    # exp(4, 45, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', std=True,
+    #     writer=Writer('./experimental_results/4_qubit_exp_45_std.txt'))
