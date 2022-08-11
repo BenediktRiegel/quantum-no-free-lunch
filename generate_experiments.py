@@ -1,20 +1,13 @@
 import numpy as np
 
 from config import *
-from metrics import calc_avg_std_risk
-import json
-from logger import Writer
-from qnns.qnn import get_qnn
-import time
-from data import *
-import importlib
+from logger import Writer, log_line_to_dict, check_dict_for_attributes
 from classic_training import train
-from metrics import quantum_risk
-import matplotlib.pyplot as plt
-import torch
 from visualisation import *
 from copy import deepcopy
-
+from concurrent.futures import ProcessPoolExecutor
+import glob
+import os
 
 
 def exp_basis_sharma(config, save_dir):
@@ -169,8 +162,135 @@ def test_mean_std():
     np.save(save_dir + 'result.npy', all_risks_array)
 
 
-def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
-                       device, cheat, use_scheduler, opt_name, scheduler_factor=0.8, std=False, writer=None):
+def get_optimizer(opt_name, qnn, lr):
+    if opt_name.lower() == 'adam':
+        optimizer = torch.optim.Adam
+    else:
+        optimizer = torch.optim.SGD
+
+    if isinstance(qnn.params, list):
+        optimizer = optimizer(qnn.params, lr=lr)
+    else:
+        optimizer = optimizer([qnn.params], lr=lr)
+
+    return optimizer
+
+
+def get_scheduler(use_scheduler, optimizer,factor=0.8, patience=3, verbose=False):
+    if use_scheduler:
+        # some old values: factor=0.8, patience=10, min_lr=1e-10, verbose=False
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=factor, patience=patience, min_lr=1e-10, verbose=verbose)
+    else:
+        scheduler = None
+
+    return scheduler
+
+
+def process_execution(args):
+    (process_id, num_processes, writer, idx_file_path, exp_file_path,
+     x_qbits, cheat, qnn_name, lr, device, num_layers, opt_name, use_scheduler, num_epochs,
+     scheduler_factor, scheduler_patience) = args
+    print(f'Awesome process with id {process_id}')
+    if not exists(idx_file_path):
+        raise ValueError('idx_file does not exist')
+    current_idx = process_id - num_processes
+    with open(idx_file_path, 'r') as idx_file:
+        first_line = idx_file.readline().replace('\n', '')
+        current_idx = int(first_line)
+        idx_file.close()
+    current_idx += num_processes
+
+    line_dict = None
+    attributes = dict(schmidt_rank='*', num_points='*', std='*')
+    while True:
+        with open(exp_file_path, 'r') as exp_file:
+            current_line = exp_file.readline()
+            for i in range(current_idx-1):
+                current_line = exp_file.readline()
+            line_dict = log_line_to_dict(current_line)
+            exp_file.close()
+
+        if line_dict is None or not check_dict_for_attributes(line_dict, attributes):
+            return
+
+        # line_dict entries: schmidt_rank, num_points, std, unitary_idx, dataset_idx
+        schmidt_rank = line_dict['schmidt_rank']
+        num_points = line_dict['num_points']
+        std = line_dict['std']
+
+        # Do experiment
+        r_qbits = int(np.ceil(np.log2(schmidt_rank)))
+        x_wires = list(range(x_qbits))
+
+        if cheat:
+            U, unitary_qnn_params = create_unitary_from_circuit(qnn_name, x_wires, cheat, device='cpu')
+        else:
+            U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
+        print(f"Run: current_exp_idx={current_idx}")
+        info_string = f"schmidt_rank={schmidt_rank}, num_points={num_points}"
+
+        qnn = get_qnn(qnn_name, x_wires, num_layers, device=device)
+        # torch.save(qnn.params, 'files_for_alex/qnn_params.pt')
+        optimizer = get_optimizer(opt_name, qnn, lr)
+        scheduler = get_scheduler(use_scheduler, optimizer, factor=scheduler_factor, patience=scheduler_patience)
+
+        if std == 0:
+            X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+            X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+            # if r_idx == 2 and num_points_idx == 3:
+            #     torch.save(qnn.params, './data/qnn_params.pt')
+            #     torch.save(U, './data/U.pt')
+            #     torch.save(X, './data/X.pt')
+            starting_time = time.time()
+            losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
+            train_time = time.time() - starting_time
+            print(f"\tTraining took {train_time}s")
+
+            risk = quantum_risk(U, qnn.get_matrix_V())
+            # Log everything
+            if writer:
+                losses_str = str(losses).replace(' ', '')
+                qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                u_str = str(qnn.params.tolist()).replace(' ', '')
+                writer.append_line(
+                    info_string + f", std={0}, losses={losses_str}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                )
+        else:
+            losses = []
+            risk = []
+            train_time = []
+            max_rank = 2 ** x_qbits
+            for std in range(0, max_rank):
+                if min(schmidt_rank - 1, max_rank - schmidt_rank) <= 3 * std:
+                    continue
+                X, final_std = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits, max_rank)
+                X = torch.tensor(np.array(X), dtype=torch.complex128)
+                X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                starting_time = time.time()
+                loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
+                train_time_std = time.time() - starting_time
+                print(f"\tTraining took {train_time_std}s")
+                risk_std = quantum_risk(U, qnn.get_matrix_V())
+                losses.append(loss_std)
+                risk.append(risk_std)
+                train_time.append(train_time_std)
+                # Log everything
+                if writer:
+                    losses_str = str(losses).replace(' ', '')
+                    qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                    u_str = str(qnn.params.tolist()).replace(' ', '')
+                    writer.append_line(
+                        info_string + f", std={final_std}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                    )
+        current_idx += num_processes
+        with open(idx_file_path, 'w') as idx_file:
+            idx_file.write(str(current_idx))
+            idx_file.close()
+
+
+def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
+                       device, cheat, use_scheduler, opt_name, scheduler_factor=0.8, scheduler_patience=3, std=False,
+                       writer_path=None, num_processes=1, run_type='new'):
     """
     Generate experiment data
     
@@ -198,110 +318,43 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
     use_scheduler: boolean
         use scheduler for training or not
     """
-    if writer:
-        writer.append_line(f"x_qbits={x_qbits}, num_layers={num_layers}, num_epochs={num_epochs}, lr={lr}, "
-                      f"num_unitaries={num_unitaries}, num_datasets={num_datasets}, qnn_name={qnn_name}, "
-                      f"device={device}, cheat={cheat}, use_scheduler={use_scheduler}")
+    #ProcessPoolExecutor
+    torch.multiprocessing.set_start_method('spawn')
+    idx_file_dir = writer_path
+    if run_type != 'continue':
+        filelist = glob.glob(os.path.join(idx_file_dir, "process_idx_*.txt"))
+        for f in filelist:
+            os.remove(f)
+
+
+    writers = [None]*num_processes
+    if writer_path:
+        writers = [Writer(writer_path+f"result_{process_id}.txt", delete=(run_type != 'continue')) for process_id in range(num_processes)]
+        for writer in writers:
+            writer.append_line(f"x_qbits={x_qbits}, num_layers={num_layers}, num_epochs={num_epochs}, lr={lr}, "
+                          f"num_unitaries={num_unitaries}, num_datasets={num_datasets}, qnn_name={qnn_name}, "
+                          f"device={device}, cheat={cheat}, use_scheduler={use_scheduler}")
+
+    exp_file_path = gen_exp_file(x_qbits, num_unitaries, num_datasets, std)
     complete_starting_time = time.time()
-    r_list = list(range(x_qbits+1))
-    num_datapoints = list(range(1, 2**x_qbits + 1))
 
+    # (process_id, num_processes, writer, idx_file_path, exp_file_path,
+    #  x_qbits, cheat, qnn_name, device, num_layers, opt_name, use_scheduler, num_epochs)
 
-    results = dict()
-    for r_idx in range(len(r_list)):
-        schmidt_rank = 2**r_list[r_idx]
-        results[r_list[r_idx]] = []
-        for num_points_idx in range(len(num_datapoints)):
-            num_points = num_datapoints[num_points_idx]
-            risks = []
-            for unitary_idx in range(num_unitaries):
-                r_qbits = int(np.ceil(np.log2(schmidt_rank)))
-                x_wires = list(range(x_qbits))
-                if cheat:
-                    U, unitary_qnn_params = create_unitary_from_circuit(qnn_name, x_wires, cheat, device='cpu')
-                    # torch.save(unitary_qnn_params, 'files_for_alex/unitary_qnn_params.pt')
-                    # torch.save(U, 'files_for_alex/unitary_U.pt')
-                else:
-                    U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
-                for dataset_idx in range(num_datasets):
-                    print(
-                        f"Run: r [{r_idx + 1}/{len(r_list)}], no. points [{num_points_idx + 1}/{len(num_datapoints)}], "
-                        f"U [{unitary_idx + 1}/{num_unitaries}], dataset [{dataset_idx + 1}/{num_datasets}]")
-                    info_string = f"schmidt_rank={schmidt_rank}, num_points={num_points}, U=[{unitary_idx + 1}/{num_unitaries}], dataset=[{dataset_idx + 1}/{num_datasets}]"
-
-                    qnn = get_qnn(qnn_name, x_wires, num_layers, device=device)
-                    # torch.save(qnn.params, 'files_for_alex/qnn_params.pt')
-                    if opt_name.lower() == 'adam':
-                        optimizer = torch.optim.Adam
-                    else:
-                        optimizer = torch.optim.SGD
-
-                    if isinstance(qnn.params, list):
-                        optimizer = optimizer(qnn.params, lr=lr)
-                    else:
-                        optimizer = optimizer([qnn.params], lr=lr)
-                    if use_scheduler:
-                        # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=0.8, patience=10,
-                        #                                                        min_lr=1e-10,
-                        #                                                        verbose=False)
-                        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, factor=scheduler_factor, patience=3,
-                                                                               min_lr=1e-10,
-                                                                               verbose=False)
-                    else:
-                        scheduler = None
-
-                    if not std:
-                        X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
-                        X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
-                        if r_idx == 2 and num_points_idx == 3:
-                            torch.save(qnn.params, './data/qnn_params.pt')
-                            torch.save(U, './data/U.pt')
-                            torch.save(X, './data/X.pt')
-                        starting_time = time.time()
-                        losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
-                        train_time = time.time() - starting_time
-                        print(f"\tTraining took {train_time}s")
-
-                        risk = quantum_risk(U, qnn.get_matrix_V())
-                        risks.append(risk)
-                        # Log everything
-                        if writer:
-                            losses_str = str(losses).replace(' ', '')
-                            qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
-                            u_str = str(qnn.params.tolist()).replace(' ', '')
-                            writer.append_line(
-                                info_string + f", std={0}, losses={losses_str}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}")
-                    else:
-                        losses = []
-                        risk = []
-                        train_time = []
-                        max_rank = 2 ** x_qbits
-                        for std in range(0, max_rank):
-                            if min(schmidt_rank - 1, max_rank - schmidt_rank) <= 3*std:
-                                continue
-                            X = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits, max_rank)
-                            X = torch.tensor(np.array(X), dtype=torch.complex128)
-                            X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
-                            starting_time = time.time()
-                            loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
-                            train_time_std = time.time() - starting_time
-                            print(f"\tTraining took {train_time_std}s")
-                            risk_std = quantum_risk(U, qnn.get_matrix_V())
-                            losses.append(loss_std)
-                            risk.append(risk_std)
-                            train_time.append(train_time_std)
-                            # Log everything
-                            if writer:
-                                losses_str = str(losses).replace(' ', '')
-                                qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
-                                u_str = str(qnn.params.tolist()).replace(' ', '')
-                                writer.append_line(
-                                    info_string + f", std={std}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}")
-                        risks.append(risk)
-
-            risks = np.array(risks)
-            results[r_list[r_idx]].append(risks)
-
+    ppe = ProcessPoolExecutor(max_workers=num_processes)
+    worker_args = []
+    for process_id in range(num_processes):
+        idx_file_path = idx_file_dir + f'process_idx_{process_id}.txt'
+        if not exists(idx_file_path):
+            with open(idx_file_path, 'w') as idx_file:
+                idx_file.write(str(process_id-num_processes))
+                idx_file.close()
+        worker_args.append((process_id, num_processes, writers[process_id], idx_file_path, exp_file_path, x_qbits,
+                            cheat, qnn_name, lr, device, num_layers, opt_name, use_scheduler, num_epochs,
+                            scheduler_factor, scheduler_patience))
+    results = ppe.map(process_execution, worker_args)
+    for res in results:
+        print(res)
     # iterate over untrained unitaries
     zero_risks = []
     for unitary_idx in range(num_unitaries):
@@ -314,28 +367,30 @@ def generate_exp_data( x_qbits, num_layers, num_epochs, lr, num_unitaries, num_d
             qnn = get_qnn(qnn_name, x_wires, num_layers, device='cpu')
             zero_risks.append(quantum_risk(U, qnn.get_matrix_V()))
     zero_risks = np.array(zero_risks)
-    if writer:
-        writer.append_line(f"zero_risks={zero_risks}")
+    if writers:
+        writers[0].append_line(f"zero_risks={zero_risks}")
 
-    for r in r_list:
-        results[r].insert(0, zero_risks)
     complete_time = time.time()-complete_starting_time
     print(f"Complete experiment took {complete_time}s")
-    if writer:
+    for writer in writers:
         writer.append_line(f"complete_time={complete_time}")
 
-    return results
 
-
-def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, optimizer, scheduler_factor=0.8, std=False, writer=None):
+def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
+        optimizer, scheduler_factor=0.8, scheduler_patience=3, std=False, writer_path=None, num_processes=1, run_type='continue'):
     """
     Start experiments, including generation of data as well as plot
 
     """
-    results = generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler, optimizer, scheduler_factor=scheduler_factor, std=std, writer=writer)
-    num_datapoints = list(range(0, 2**x_qbits + 1))
-    r_list = list(range(x_qbits + 1))
-    generate_risk_plot(results, num_datapoints, x_qbits, r_list)
+
+    generate_exp_data(
+        x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
+        optimizer, scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=std,
+        writer_path=writer_path, num_processes=num_processes, run_type=run_type
+    )
+    # num_datapoints = list(range(0, 2**x_qbits + 1))
+    # r_list = list(range(x_qbits + 1))
+    # generate_risk_plot(results, num_datapoints, x_qbits, r_list)
 
 
 def gradient_3D_plot(U=None, func=None, name='gradient_map'):
@@ -410,8 +465,6 @@ def gradient_3D_plot(U=None, func=None, name='gradient_map'):
 
     plotly.offline.plot(fig, filename=f'./plots/loss_map/{name}.html')
     # fig.show()
-
-
 
 
 def map_loss_function(U=None, func=None, name='loss_map'):
@@ -513,8 +566,15 @@ if __name__ == '__main__':
     # map_loss_function(U=U, func=root_func(100), name='loss_map_pow_100')
     # gradient_3D_plot(U=U, func=root_func(100), name='gradient_map_pow_100')
     scheduler_factor = 0.8
+    scheduler_patience = 10
+    num_processes = 1
     lr = 0.1
-    exp(3, 25, 1000, lr, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', scheduler_factor=scheduler_factor, std=False,
-        writer=Writer(f'./experimental_results/4_qubit_exp_45_{scheduler_factor}_3_lr={lr}.txt'))
+    run_type = 'new'
+    exp(7, 1, 1000, lr, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam',
+        scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=True,
+        writer_path='./experimental_results/test/', num_processes=num_processes, run_type=run_type
+        )
     # exp(4, 45, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', std=True,
     #     writer=Writer('./experimental_results/4_qubit_exp_45_std.txt'))
+    #exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
+        #optimizer, scheduler_factor=0.8, scheduler_patience=3, std=False, writer_path=None):

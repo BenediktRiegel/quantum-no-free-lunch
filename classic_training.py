@@ -3,8 +3,8 @@ import time
 import numpy as np
 import torch
 
-torch.manual_seed(4241)
-np.random.seed(4241)
+# torch.manual_seed(4241)
+# np.random.seed(4241)
 
 
 def cost_func(X, y_conj, qnn, device='cpu'):
