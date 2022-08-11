@@ -1,9 +1,12 @@
+from os.path import exists
+
 class Writer:
-    def __init__(self, file_path):
+    def __init__(self, file_path, delete=True):
         self.file_path = file_path
-        f = open(file_path, 'w')
-        f.write('')
-        f.close()
+        if not exists(self.file_path) or delete:
+            f = open(file_path, 'w')
+            f.write('')
+            f.close()
 
     def append(self, text):
         text = str(text)
