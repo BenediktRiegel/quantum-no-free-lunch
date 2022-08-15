@@ -260,28 +260,25 @@ def process_execution(args):
             risk = []
             train_time = []
             max_rank = 2 ** x_qbits
-            for std in range(0, max_rank):
-                if min(schmidt_rank - 1, max_rank - schmidt_rank) <= 3 * std:
-                    continue
-                X, final_std = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits, max_rank)
-                X = torch.tensor(np.array(X), dtype=torch.complex128)
-                X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
-                starting_time = time.time()
-                loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
-                train_time_std = time.time() - starting_time
-                print(f"\tTraining took {train_time_std}s")
-                risk_std = quantum_risk(U, qnn.get_matrix_V())
-                losses.append(loss_std)
-                risk.append(risk_std)
-                train_time.append(train_time_std)
-                # Log everything
-                if writer:
-                    losses_str = str(losses).replace(' ', '')
-                    qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
-                    u_str = str(qnn.params.tolist()).replace(' ', '')
-                    writer.append_line(
-                        info_string + f", std={final_std}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
-                    )
+            X, final_std, final_mean = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits, max_rank)
+            X = torch.tensor(np.array(X), dtype=torch.complex128)
+            X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+            starting_time = time.time()
+            loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
+            train_time_std = time.time() - starting_time
+            print(f"\tTraining took {train_time_std}s")
+            risk_std = quantum_risk(U, qnn.get_matrix_V())
+            losses.append(loss_std)
+            risk.append(risk_std)
+            train_time.append(train_time_std)
+            # Log everything
+            if writer:
+                losses_str = str(losses).replace(' ', '')
+                qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                u_str = str(qnn.params.tolist()).replace(' ', '')
+                writer.append_line(
+                    info_string + f", std={final_std}, mean={final_mean}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                )
         current_idx += num_processes
         with open(idx_file_path, 'w') as idx_file:
             idx_file.write(str(current_idx))
@@ -570,7 +567,7 @@ if __name__ == '__main__':
     num_processes = 1
     lr = 0.1
     run_type = 'new'
-    exp(7, 1, 1000, lr, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam',
+    exp(4, 1, 1000, lr, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=True,
         writer_path='./experimental_results/test/', num_processes=num_processes, run_type=run_type
         )
