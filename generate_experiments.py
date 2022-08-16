@@ -281,7 +281,7 @@ def process_execution(args):
                         info_string + f", std={final_std}, mean={final_mean}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
                     )
             else:
-                print(f"\nfinal_std is 0 so we skip\n")
+                print(f"\nfinal_std={final_std} so we skip\n")
         current_idx += num_processes
         with open(idx_file_path, 'w') as idx_file:
             idx_file.write(str(current_idx))
@@ -393,7 +393,7 @@ def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_na
     # generate_risk_plot(results, num_datapoints, x_qbits, r_list)
 
 
-def gradient_3D_plot(U=None, func=None, name='gradient_map'):
+def gradient_3D_plot(U=None, X=None, func=None, name='gradient_map'):
     from classic_training import cost_func
     # Parameters
     x_qbits = 1
@@ -424,7 +424,8 @@ def gradient_3D_plot(U=None, func=None, name='gradient_map'):
     # Dataset X
     schmidt_rank = 2**r
     r_qbits = int(np.ceil(np.log2(schmidt_rank)))
-    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+    if X is None:
+        X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
     X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
 
     # Labels y conjugated
@@ -467,7 +468,7 @@ def gradient_3D_plot(U=None, func=None, name='gradient_map'):
     # fig.show()
 
 
-def map_loss_function(U=None, func=None, name='loss_map'):
+def map_loss_function(U=None, X=None, func=None, name='loss_map'):
     from classic_training import cost_func
     # Parameters
     x_qbits = 1
@@ -499,7 +500,8 @@ def map_loss_function(U=None, func=None, name='loss_map'):
     # Dataset X
     schmidt_rank = 2**r
     r_qbits = int(np.ceil(np.log2(schmidt_rank)))
-    X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+    if X is None:
+        X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
     X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
 
     # Labels y conjugated
