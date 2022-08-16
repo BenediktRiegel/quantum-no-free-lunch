@@ -261,24 +261,27 @@ def process_execution(args):
             train_time = []
             max_rank = 2 ** x_qbits
             X, final_std, final_mean = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits, max_rank)
-            X = torch.tensor(np.array(X), dtype=torch.complex128)
-            X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
-            starting_time = time.time()
-            loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
-            train_time_std = time.time() - starting_time
-            print(f"\tTraining took {train_time_std}s")
-            risk_std = quantum_risk(U, qnn.get_matrix_V())
-            losses.append(loss_std)
-            risk.append(risk_std)
-            train_time.append(train_time_std)
-            # Log everything
-            if writer:
-                losses_str = str(losses).replace(' ', '')
-                qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
-                u_str = str(qnn.params.tolist()).replace(' ', '')
-                writer.append_line(
-                    info_string + f", std={final_std}, mean={final_mean}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
-                )
+            if final_std != 0:
+                X = torch.tensor(np.array(X), dtype=torch.complex128)
+                X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                starting_time = time.time()
+                loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
+                train_time_std = time.time() - starting_time
+                print(f"\tTraining took {train_time_std}s")
+                risk_std = quantum_risk(U, qnn.get_matrix_V())
+                losses.append(loss_std)
+                risk.append(risk_std)
+                train_time.append(train_time_std)
+                # Log everything
+                if writer:
+                    losses_str = str(losses).replace(' ', '')
+                    qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                    u_str = str(qnn.params.tolist()).replace(' ', '')
+                    writer.append_line(
+                        info_string + f", std={final_std}, mean={final_mean}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                    )
+            else:
+                print(f"\nfinal_std is 0 so we skip\n")
         current_idx += num_processes
         with open(idx_file_path, 'w') as idx_file:
             idx_file.write(str(current_idx))
