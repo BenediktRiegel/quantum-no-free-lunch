@@ -17,8 +17,8 @@ def cartesian(arrays, out=None, dtype=np.float64):
     n = np.prod([x.size for x in arrays])
     if out is None:
         out = np.zeros([n, len(arrays)], dtype=dtype)
-        out = np.array([[1e-16]*len(arrays) for _ in range(n)])
-        print(out)
+        # out = np.array([[1e-1[[1e-16]*len(arrays) for _ in range(n)])
+        # print(out)
 
 
     m = int(n / arrays[0].size)
@@ -31,7 +31,7 @@ def cartesian(arrays, out=None, dtype=np.float64):
 
 def get_offset_list(list):
     list_of_offset = [el for el in product(list, repeat=4)]
-    print('Full offset', list_of_offset)
+    # print('Full offset', list_of_offset)
 
 def compute_gradient(p_idx, qnn, X, y_conj):
     original_params = deepcopy(qnn.params)
@@ -80,7 +80,7 @@ def neighbourhood_loss(qnn, X, U, num_samples, sample_step_size):
     param_indices = get_param_indices(qnn.params)
     sample_values = np.linspace(-num_samples*sample_step_size, num_samples*sample_step_size, num=2*num_samples+1, endpoint=True, dtype=np.float64)
     neighbourhood_params = [el for el in product(sample_values, repeat=len(param_indices))]
-    print("neighbourhood_params:", neighbourhood_params)
+    # print("neighbourhood_params:", neighbourhood_params)
     result = np.empty((len(neighbourhood_params),))
     org_params = deepcopy(qnn.params)
     for n_p_idx in range(len(neighbourhood_params)):
@@ -152,12 +152,12 @@ def main():
                     if (np.abs(n_loss - p_loss) <= loss_tol).all():
                         print("found plateau")
                         with open('./experimental_results/plateau/plateau_results.txt', 'a') as f:
-                            f.write(f"plateau_type=strong, qnn_params={str(qnn.params.tolist()).replace(' ', '')}, unitary={str(U.tolist()).replace(' ', '')}, data_points={str(X.tolist()).replace(' ', '')}")
+                            f.write(f"plateau_type=strong, qnn_params={str(qnn.params.tolist()).replace(' ', '')}, unitary={str(U.tolist()).replace(' ', '')}, data_points={str(X.tolist()).replace(' ', '')}\n")
                             f.close()
                     print("found weak plateau")
                     with open('./experimental_results/plateau/plateau_results.txt', 'a') as f:
                         f.write(
-                            f"plateau_type=weak, qnn_params={str(qnn.params.tolist()).replace(' ', '')}, unitary={str(U.tolist()).replace(' ', '')}, data_points={str(X.tolist()).replace(' ', '')}")
+                            f"plateau_type=weak, qnn_params={str(qnn.params.tolist()).replace(' ', '')}, unitary={str(U.tolist()).replace(' ', '')}, data_points={str(X.tolist()).replace(' ', '')}\n")
                         f.close()
                 print("no plateau found at saddle point")
 
