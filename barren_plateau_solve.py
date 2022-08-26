@@ -154,11 +154,12 @@ def main():
                         with open('./experimental_results/plateau/plateau_results.txt', 'a') as f:
                             f.write(f"plateau_type=strong, qnn_params={str(qnn.params.tolist()).replace(' ', '')}, unitary={str(U.tolist()).replace(' ', '')}, data_points={str(X.tolist()).replace(' ', '')}\n")
                             f.close()
+                    else:
+                        with open('./experimental_results/plateau/plateau_results.txt', 'a') as f:
+                            f.write(
+                                f"plateau_type=weak, qnn_params={str(qnn.params.tolist()).replace(' ', '')}, unitary={str(U.tolist()).replace(' ', '')}, data_points={str(X.tolist()).replace(' ', '')}\n")
+                            f.close()
                     print("found weak plateau")
-                    with open('./experimental_results/plateau/plateau_results.txt', 'a') as f:
-                        f.write(
-                            f"plateau_type=weak, qnn_params={str(qnn.params.tolist()).replace(' ', '')}, unitary={str(U.tolist()).replace(' ', '')}, data_points={str(X.tolist()).replace(' ', '')}\n")
-                        f.close()
                 print("no plateau found at saddle point")
 
 
