@@ -7,7 +7,6 @@ import torch
 from qnns.qnn import get_qnn
 from data import random_unitary_matrix, uniform_random_data
 from barren_plateau_hessian import *
-import numpy as np
 from itertools import product
 
 
@@ -58,11 +57,9 @@ def get_cost_function(qnn, X, U):
     return cost_func
 
 
-def neighbourhood_gradients(qnn, X, U, num_samples, sample_step_size):
+def neighbourhood_gradients(qnn, X, U, num_samples, sample_step_size, param_indices, sample_values, neighbourhood_params):
     y_conj = torch.matmul(U, X).conj()
-    param_indices = get_param_indices(qnn.params)
-    sample_values = np.linspace(-num_samples*sample_step_size, num_samples*sample_step_size, num=2*num_samples+1, endpoint=True)
-    neighbourhood_params = [el for el in product(sample_values, repeat=len(param_indices))]
+
     result = np.empty((len(neighbourhood_params), len(param_indices)))
     org_params = deepcopy(qnn.params)
     for n_p_idx in range(len(neighbourhood_params)):
@@ -72,25 +69,49 @@ def neighbourhood_gradients(qnn, X, U, num_samples, sample_step_size):
         for i in range(len(param_indices)):
             result[n_p_idx, i] = compute_gradient(param_indices[i], qnn, X, y_conj)
     qnn.params = org_params
-    return result.reshape([len(sample_values)]*len(param_indices)+[len(param_indices)])
+    #return result.reshape([len(sample_values)]*len(param_indices)+[len(param_indices)])
+    return result
 
 
-def neighbourhood_loss(qnn, X, U, num_samples, sample_step_size):
+def torch_neighbourhood_gradients(qnn, X, U, num_samples, sample_step_size, param_indices, sample_values, neighbourhood_params):
     y_conj = torch.matmul(U, X).conj()
-    param_indices = get_param_indices(qnn.params)
-    sample_values = np.linspace(-num_samples*sample_step_size, num_samples*sample_step_size, num=2*num_samples+1, endpoint=True, dtype=np.float64)
-    neighbourhood_params = [el for el in product(sample_values, repeat=len(param_indices))]
-    # print("neighbourhood_params:", neighbourhood_params)
-    result = np.empty((len(neighbourhood_params),))
-    org_params = deepcopy(qnn.params)
+
+    #print(len(neighbourhood_params))
+    result = np.empty((len(neighbourhood_params), len(param_indices)))
+    org_params = qnn.params
     for n_p_idx in range(len(neighbourhood_params)):
         offsets = neighbourhood_params[n_p_idx]
+        new_params = torch.empty(org_params.shape, dtype=torch.float64)
         for i in range(len(param_indices)):
-            qnn.params[param_indices[i]] = org_params[param_indices[i]] + offsets[i]
+            new_params[param_indices[i]] = org_params[param_indices[i]] + offsets[i]
+        # qnn.params = torch.tensor(new_params, requires_grad=True, dtype=torch.float64)
+        qnn.params = new_params.requires_grad_(True)
+        grads = torch_gradients(qnn, X, y_conj)
+        for i in range(len(param_indices)):
+            result[n_p_idx][i] = np.array(grads[param_indices[i]])
+    qnn.params = org_params
+    # [len(sample_values), ...,len(sample_values), len(param_indices)]
+    #return result.reshape([len(sample_values)]*len(param_indices)+[len(param_indices)]
+
+    return result
+
+
+def neighbourhood_loss(qnn, X, U, num_samples, sample_step_size, param_indices, sample_values, neighbourhood_params):
+    y_conj = torch.matmul(U, X).conj()
+
+    # print("neighbourhood_params:", neighbourhood_params)
+    result = np.empty((len(neighbourhood_params),))
+    org_params = qnn.params
+    for n_p_idx in range(len(neighbourhood_params)):
+        offsets = neighbourhood_params[n_p_idx]
+        new_params = torch.empty(qnn.params.shape, dtype=torch.float64)
+        for i in range(len(param_indices)):
+            new_params[param_indices[i]] = org_params[param_indices[i]] + offsets[i]
+        qnn.params = new_params
         result[n_p_idx] = loss(X, y_conj, qnn)
     qnn.params = org_params
-    return result.reshape([len(sample_values)]*len(param_indices))
-
+    #return result.reshape([len(sample_values)]*len(param_indices))
+    return result.flatten()
 
 def get_eigenvalues(x):
     #x = np.matrix(x)
@@ -115,10 +136,11 @@ def indefinite(x):
 
 def main():
     x_qbits = 1
-    num_layers = 1
+    num_layers = 3
     schmidt_rank = 1
     num_points = 2
-    num_samples = 10
+    num_samples = 1
+    static_samples = 1000
     sample_step_size = 1e-12
     grad_tol = 1e-12
     loss_tol = 1e-12
@@ -141,12 +163,24 @@ def main():
                 qnn.params[param_indices[i]] = out[i]
 
             print('test hessian for indefiniteness')
-            hessian = calc_hessian(qnn, X, U)
+            # hessian = calc_hessian(qnn, X, U)
+            hessian = torch_calc_hessian(qnn, X, U)
             if(indefinite(hessian) == 'indef'):
                 y_conj = torch.matmul(U, X).conj()
                 p_loss = loss(X, y_conj, qnn).item()
-                n_gradients = neighbourhood_gradients(qnn, X, U, num_samples, sample_step_size)
-                n_loss = neighbourhood_loss(qnn, X, U, num_samples, sample_step_size)
+
+
+                param_indices = get_param_indices(qnn.params)
+                sample_values = np.linspace(-num_samples*sample_step_size, num_samples*sample_step_size, num=2*num_samples+1, endpoint=True, dtype=np.float64)
+                #grid sampling
+                #neighbourhood_params = [el for el in product(sample_values, repeat=len(param_indices))]
+
+                #static sampling
+
+                neighbourhood_params = [np.random.uniform(-num_samples*sample_step_size, num_samples*sample_step_size, size=len(param_indices)) for i in range(static_samples)]
+                #print(neighbourhood_params)
+                n_gradients = torch_neighbourhood_gradients(qnn, X, U, num_samples, sample_step_size, param_indices, sample_values, neighbourhood_params)
+                n_loss = neighbourhood_loss(qnn, X, U, num_samples, sample_step_size, param_indices, sample_values, neighbourhood_params)
                 grad_mags = np.array([np.linalg.norm(grad) for grad in n_gradients])
                 if (grad_mags <= grad_tol).all():
                     if (np.abs(n_loss - p_loss) <= loss_tol).all():
@@ -164,6 +198,6 @@ def main():
 
 
 if __name__ == '__main__':
-    torch.manual_seed(56789)
-    np.random.seed(56789)
+    # torch.manual_seed(56789)
+    # np.random.seed(56789)
     main()

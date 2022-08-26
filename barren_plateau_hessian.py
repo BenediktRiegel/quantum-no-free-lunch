@@ -4,6 +4,7 @@ from copy import deepcopy
 from qnns.qnn import get_qnn
 from data import uniform_random_data, random_unitary_matrix
 from classic_training import cost_func
+from torch.autograd.functional import hessian
 
 
 def get_param_indices(params):
@@ -67,6 +68,23 @@ def calc_hessian(qnn, X, U):
             derv = get_shift_derv(indices[x_i], indices[x_j], qnn, X, y_conj)
             hessian_matrix[x_i][x_j] = derv
     return hessian_matrix.T
+
+
+def torch_calc_hessian(qnn, X, U):
+    params = qnn.params
+    y_conj = torch.matmul(U, X).conj()
+    def func(params):
+        qnn.params = params
+        return cost_func(X, y_conj, qnn)
+    return hessian(func, params)
+
+
+def torch_gradients(qnn, X, y_conj):
+    loss = cost_func(X, y_conj, qnn)
+    qnn.params.retain_grad()
+    loss.backward()
+    gradients = qnn.params.grad
+    return gradients
 
 
 if __name__ == '__main__':
