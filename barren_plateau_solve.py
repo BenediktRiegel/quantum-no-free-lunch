@@ -118,8 +118,8 @@ def main():
     num_layers = 1
     schmidt_rank = 1
     num_points = 2
-    num_samples = 1
-    sample_step_size = 1e-15
+    num_samples = 10
+    sample_step_size = 1e-12
     grad_tol = 1e-12
     loss_tol = 1e-12
     QNNs = ['CudaPennylane']
