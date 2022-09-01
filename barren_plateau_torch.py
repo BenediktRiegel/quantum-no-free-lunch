@@ -243,10 +243,10 @@ def main():
 
             gradient = train_qnn(qnn, unitary, X_train, ref_wires, dev, 0.1, 2)
             print('Final gradient', gradient)
-            gradient_vals.append(gradient)
+            gradient_vals.append(np.linalg.norm(gradient))
 
         print(gradient_samples)
-        variances.append(np.mean(np.var(gradient_vals,axis=0)))
+        variances.append(np.var(gradient_vals))  #np.mean(np.var(, axis=0)), wenn kein np.linalg.norm()
 
     variances = np.array(variances)
     qubits = np.array(qubits)

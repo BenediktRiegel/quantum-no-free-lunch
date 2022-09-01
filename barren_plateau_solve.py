@@ -10,6 +10,7 @@ from barren_plateau_hessian import *
 from itertools import product
 
 
+
 def cartesian(arrays, out=None, dtype=np.float64):
     arrays = [np.asarray(x) for x in arrays]
 
@@ -135,24 +136,33 @@ def indefinite(x):
 
 
 def main():
-    x_qbits = 1
-    num_layers = 3
+    x_qbits = [1,2]
+    num_layers = [3,4,5]
     schmidt_rank = 1
     num_points = 2
     num_samples = 1
     static_samples = 1000
-    sample_step_size = 1e-12
-    grad_tol = 1e-12
-    loss_tol = 1e-12
+    sample_step_size = [1e-12, 1e-10, 1e-08]
+    grad_tol = [1e-12, 1e-10, 1e-08]
+    loss_tol = [1e-12, 1e-10, 1e-08]
     QNNs = ['CudaPennylane']
+    num_trials = 100
 
-    while True:
-        U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128)
-        X = torch.tensor(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, int(np.ceil(np.log2(schmidt_rank))))), dtype=torch.complex128)
-        X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+    current_trials = 0
+    while current_trials <= num_trials :
+        for element in product(x_qbits, num_layers, sample_step_size, grad_tol, loss_tol, QNNs):
+            x_qbits_prod = element[0]
+            num_layers_prod = element[1]
+            sample_step_size_prod = element[2]
+            grad_tol_prod = element[3]
+            loss_tol_prod= element[4]
+            qnn_name = element[5]
+            U = torch.tensor(random_unitary_matrix(x_qbits_prod), dtype=torch.complex128)
+            X = torch.tensor(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits_prod, int(np.ceil(np.log2(schmidt_rank))))), dtype=torch.complex128)
+            X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
 
-        for qnn_name in QNNs:
-            qnn = get_qnn(qnn_name, list(range(x_qbits)), num_layers, device='cpu')
+
+            qnn = get_qnn(qnn_name, list(range(x_qbits_prod)), num_layers_prod, device='cpu')
             qnn.params = qnn.params.detach()
             param_indices = get_param_indices(qnn.params)
 
@@ -171,19 +181,19 @@ def main():
 
 
                 param_indices = get_param_indices(qnn.params)
-                sample_values = np.linspace(-num_samples*sample_step_size, num_samples*sample_step_size, num=2*num_samples+1, endpoint=True, dtype=np.float64)
+                sample_values = np.linspace(-num_samples*sample_step_size_prod, num_samples*sample_step_size_prod, num=2*num_samples+1, endpoint=True, dtype=np.float64)
                 #grid sampling
                 #neighbourhood_params = [el for el in product(sample_values, repeat=len(param_indices))]
 
                 #static sampling
 
-                neighbourhood_params = [np.random.uniform(-num_samples*sample_step_size, num_samples*sample_step_size, size=len(param_indices)) for i in range(static_samples)]
+                neighbourhood_params = [np.random.uniform(-num_samples*sample_step_size_prod, num_samples*sample_step_size_prod, size=len(param_indices)) for i in range(static_samples)]
                 #print(neighbourhood_params)
-                n_gradients = torch_neighbourhood_gradients(qnn, X, U, num_samples, sample_step_size, param_indices, sample_values, neighbourhood_params)
-                n_loss = neighbourhood_loss(qnn, X, U, num_samples, sample_step_size, param_indices, sample_values, neighbourhood_params)
+                n_gradients = torch_neighbourhood_gradients(qnn, X, U, num_samples, sample_step_size_prod, param_indices, sample_values, neighbourhood_params)
+                n_loss = neighbourhood_loss(qnn, X, U, num_samples, sample_step_size_prod, param_indices, sample_values, neighbourhood_params)
                 grad_mags = np.array([np.linalg.norm(grad) for grad in n_gradients])
-                if (grad_mags <= grad_tol).all():
-                    if (np.abs(n_loss - p_loss) <= loss_tol).all():
+                if (grad_mags <= grad_tol_prod).all():
+                    if (np.abs(n_loss - p_loss) <= loss_tol_prod).all():
                         print("found plateau")
                         with open('./experimental_results/plateau/plateau_results.txt', 'a') as f:
                             f.write(f"plateau_type=strong, qnn_params={str(qnn.params.tolist()).replace(' ', '')}, unitary={str(U.tolist()).replace(' ', '')}, data_points={str(X.tolist()).replace(' ', '')}\n")
@@ -195,6 +205,7 @@ def main():
                             f.close()
                     print("found weak plateau")
                 print("no plateau found at saddle point")
+        current_trials = current_trials +1
 
 
 if __name__ == '__main__':
