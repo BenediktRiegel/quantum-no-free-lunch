@@ -37,7 +37,14 @@ def str_to_float(string):
 
 def str_to_float_list(string):
     try:
+        brace_str = '['
+        while string.startswith(brace_str):
+            brace_str += '['
+        brace_count = len(brace_str) - 1
+        if brace_count == 0:
+            return None
         string_removed_braces = string[1:-1]
+
         splitted_string = string_removed_braces.split(',')
         if '[' in string_removed_braces:
             return [str_to_float(el) for el in splitted_string]
@@ -117,6 +124,15 @@ def read_log(file_path, attributes):    # schmidt_rank, num_points, std=0, U=Non
             # add line_dict only if all the attributes are contained
             if check_dict_for_attributes(line_dict, attributes):
                 result.append(line_dict)
+    print(f"length of subresult = {len(result)}")
+    return result
+
+
+def read_logs_regex(file_reg, attributes):
+    import glob
+    result = []
+    for file_path in glob.glob(file_reg):
+        result.extend(read_log(file_path, attributes))
     return result
 
 
