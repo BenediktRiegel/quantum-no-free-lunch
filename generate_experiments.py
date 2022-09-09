@@ -397,7 +397,8 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
 
 
 def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
-        optimizer, scheduler_factor=0.8, scheduler_patience=3, std=False, writer_path=None, num_processes=1, run_type='continue'):
+        optimizer, scheduler_factor=0.8, scheduler_patience=3, std=False, writer_path=None, num_processes=1, run_type='continue',
+        small_std=False):
     """
     Start experiments, including generation of data as well as plot
 
@@ -406,7 +407,7 @@ def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_na
     generate_exp_data(
         x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
         optimizer, scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=std,
-        writer_path=writer_path, num_processes=num_processes, run_type=run_type
+        writer_path=writer_path, num_processes=num_processes, run_type=run_type, small_std=small_std
     )
     # num_datapoints = list(range(0, 2**x_qbits + 1))
     # r_list = list(range(x_qbits + 1))
@@ -592,9 +593,10 @@ if __name__ == '__main__':
     num_processes = 1
     lr = 0.1
     run_type = 'new'
-    exp(4, 1, 1000, lr, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam',
+    exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=True,
-        writer_path='./experimental_results/test/', num_processes=num_processes, run_type=run_type
+        writer_path='./experimental_results/test/', num_processes=num_processes, run_type=run_type,
+        small_std=True
         )
     # exp(4, 45, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', std=True,
     #     writer=Writer('./experimental_results/4_qubit_exp_45_std.txt'))
