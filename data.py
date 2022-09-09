@@ -96,7 +96,55 @@ def uniform_random_data(schmidt_rank: int, size: int, x_qbits: int, r_qbits: int
     return data
 
 
+def create_pairs(mean, lower_bound, upper_bound, std):
 
+    """
+    Create pairs for std experiment 4-qubit system and rank x
+    """
+
+    #create pair
+
+    # assert mean-std
+    # assert mean+std
+    return (mean-std, mean+std)
+
+
+#create dataset of size <size> with a mean schmidt rank
+def uniform_random_data_mean_pair(mean, std, num_samples, x_qbits):
+
+    data = []
+    lower_bound = 1
+    upper_bound = 16
+    tuple = create_pairs(mean, lower_bound, upper_bound, std)
+    r_qbits = int(np.ceil(mean+std))
+
+    if std % 2 == 0:
+        #no randomness
+        for i in range(0, num_samples//2):
+            data.append(uniformly_sample_random_point(mean-std, x_qbits, r_qbits))
+    else:
+        #randomness
+        for i in range(0, num_samples//2 + 1):
+            data.append(uniformly_sample_random_point(mean - std, x_qbits, r_qbits))
+
+    """"
+        numbers_mean_std, counter, final_std, final_mean = create_mean_std(mean, std, num_samples)
+        r_qbits = int(np.ceil(np.log2(numbers_mean_std.max())))
+        for i in range(len(numbers_mean_std)):
+            schmidt_rank = int(numbers_mean_std[i])
+            data.append(uniformly_sample_random_point(schmidt_rank, x_qbits, r_qbits))
+        """
+
+    return data, std, mean
+
+
+
+
+
+"""
+Old std experiments
+
+"""
 def create_mean_std(mean, std, num_samples, max_rank, counter=0):
     """
     (Approximately) generates a set of integers in a specified range with certain mean and standard deviation
@@ -214,6 +262,20 @@ class SchmidtDataset_std(torch.utils.data.Dataset):
     def __init__(self, schmidt_rank, num_points, x_qbits, r_qbits, std):
         # Initialize the data and label list
         self.data = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits)
+        self.labels = [0]*num_points
+
+    def __getitem__(self, index):
+        data = self.data[index]
+        label = self.labels[index]
+        return data, label
+
+    def __len__(self):
+        return len(self.data)
+
+class SchmidtDataset_std_pair(torch.utils.data.Dataset):
+    def __init__(self, schmidt_rank, num_points, x_qbits, r_qbits, std):
+        # Initialize the data and label list
+        self.data = uniform_random_data_mean_pair(schmidt_rank, std, num_points, x_qbits, r_qbits)
         self.labels = [0]*num_points
 
     def __getitem__(self, index):
