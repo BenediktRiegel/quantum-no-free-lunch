@@ -43,25 +43,36 @@ def get_exp_six_qubit_unitary_config():
     return gen_config(1, 1, 6, 6, 10, 10, 100, 1, 0, 0.01, 8, 120, True, 'SGD')
 
 
-def gen_exp_file(x_qbits, num_unitaries, num_datasets, std_bool=False):
+def gen_exp_file(x_qbits, num_unitaries, num_datasets, std_bool=False, small_std=False):
     file_path = f'./data/{x_qbits}_exp_file.txt'
     writer = Writer(file_path)
-    r_list = list(range(x_qbits + 1))
-    for r_idx in range(len(r_list)):
-        schmidt_rank = 2**r_list[r_idx]
-        num_datapoints = list(range(1, 2 ** x_qbits + 1))
-        for num_points_idx in range(len(num_datapoints)):
-            num_points = num_datapoints[num_points_idx]
-            for unitary_idx in range(num_unitaries):
-                for dataset_idx in range(num_datasets):
-                    if not std_bool:
-                        writer.append_line(f"schmidt_rank={schmidt_rank}, num_points={num_points}, std=0, "
-                                           f"unitary_idx={unitary_idx}, dataset_idx={dataset_idx}")
-                    else:
-                        max_rank = 2 ** x_qbits
-                        for std in range(1, max_rank):
-                            if min(schmidt_rank - 1, max_rank - schmidt_rank) < 3 * std:
-                                continue
-                            writer.append_line(f"schmidt_rank={schmidt_rank}, num_points={num_points}, std={std}, "
+    if not small_std:
+        r_list = list(range(x_qbits + 1))
+        for r_idx in range(len(r_list)):
+            schmidt_rank = 2**r_list[r_idx]
+            num_datapoints = list(range(1, 2 ** x_qbits + 1))
+            for num_points_idx in range(len(num_datapoints)):
+                num_points = num_datapoints[num_points_idx]
+                for unitary_idx in range(num_unitaries):
+                    for dataset_idx in range(num_datasets):
+                        if not std_bool:
+                            writer.append_line(f"schmidt_rank={schmidt_rank}, num_points={num_points}, std=0, "
                                                f"unitary_idx={unitary_idx}, dataset_idx={dataset_idx}")
+                        else:
+                            max_rank = 2 ** x_qbits
+                            for std in range(1, max_rank):
+                                if min(schmidt_rank - 1, max_rank - schmidt_rank) < 3 * std:
+                                    continue
+                                writer.append_line(f"schmidt_rank={schmidt_rank}, num_points={num_points}, std={std}, "
+                                                   f"unitary_idx={unitary_idx}, dataset_idx={dataset_idx}")
+
+    else:
+        schmidt_rank = 4
+        num_points = 2
+        max_std = min(2**x_qbits - schmidt_rank, schmidt_rank - 1) + 1
+        for unitary_idx in range(num_unitaries):
+            for dataset_idx in range(num_datasets):
+                for std in range(max_std):
+                    writer.append_line(f"schmidt_rank={schmidt_rank}, num_points={num_points}, std={std}, "
+                                       f"unitary_idx={unitary_idx}, dataset_idx={dataset_idx}")
     return file_path
