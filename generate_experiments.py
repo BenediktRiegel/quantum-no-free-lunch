@@ -4,6 +4,7 @@ from config import *
 from logger import Writer, log_line_to_dict, check_dict_for_attributes
 from classic_training import train
 from visualisation import *
+from data import *
 from copy import deepcopy
 from concurrent.futures import ProcessPoolExecutor
 import glob
@@ -189,7 +190,7 @@ def get_scheduler(use_scheduler, optimizer,factor=0.8, patience=3, verbose=False
 def process_execution(args):
     (process_id, num_processes, writer, idx_file_path, exp_file_path,
      x_qbits, cheat, qnn_name, lr, device, num_layers, opt_name, use_scheduler, num_epochs,
-     scheduler_factor, scheduler_patience) = args
+     scheduler_factor, scheduler_patience, small_std) = args
     print(f'Awesome process with id {process_id}')
     if not exists(idx_file_path):
         raise ValueError('idx_file does not exist')
@@ -256,32 +257,51 @@ def process_execution(args):
                     info_string + f", std={0}, losses={losses_str}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
                 )
         else:
-            losses = []
-            risk = []
-            train_time = []
-            max_rank = 2 ** x_qbits
-            X, final_std, final_mean = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits, max_rank)
-            if final_std != 0:
+            if not small_std:
+                losses = []
+                risk = []
+                train_time = []
+                max_rank = 2 ** x_qbits
+                X, final_std, final_mean = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits, max_rank)
+                if final_std != 0:
+                    X = torch.tensor(np.array(X), dtype=torch.complex128)
+                    X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                    starting_time = time.time()
+                    loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
+                    train_time_std = time.time() - starting_time
+                    print(f"\tTraining took {train_time_std}s")
+                    risk_std = quantum_risk(U, qnn.get_matrix_V())
+                    losses.append(loss_std)
+                    risk.append(risk_std)
+                    train_time.append(train_time_std)
+                    # Log everything
+                    if writer:
+                        losses_str = str(losses).replace(' ', '')
+                        qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                        u_str = str(qnn.params.tolist()).replace(' ', '')
+                        writer.append_line(
+                            info_string + f", std={final_std}, mean={final_mean}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                        )
+                else:
+                    print(f"\nfinal_std={final_std} so we skip\n")
+            else:
+                X, std, mean = uniform_random_data_mean_pair(schmidt_rank, std, num_points, x_qbits)
                 X = torch.tensor(np.array(X), dtype=torch.complex128)
                 X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+
                 starting_time = time.time()
-                loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
-                train_time_std = time.time() - starting_time
-                print(f"\tTraining took {train_time_std}s")
-                risk_std = quantum_risk(U, qnn.get_matrix_V())
-                losses.append(loss_std)
-                risk.append(risk_std)
-                train_time.append(train_time_std)
+                losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
+                train_time = time.time() - starting_time
+                print(f"\tTraining took {train_time}s")
+                risk = quantum_risk(U, qnn.get_matrix_V())
                 # Log everything
                 if writer:
                     losses_str = str(losses).replace(' ', '')
                     qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
                     u_str = str(qnn.params.tolist()).replace(' ', '')
                     writer.append_line(
-                        info_string + f", std={final_std}, mean={final_mean}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                        info_string + f", std={std}, mean={mean}, losses={losses}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
                     )
-            else:
-                print(f"\nfinal_std={final_std} so we skip\n")
         current_idx += num_processes
         with open(idx_file_path, 'w') as idx_file:
             idx_file.write(str(current_idx))
@@ -290,7 +310,7 @@ def process_execution(args):
 
 def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
                        device, cheat, use_scheduler, opt_name, scheduler_factor=0.8, scheduler_patience=3, std=False,
-                       writer_path=None, num_processes=1, run_type='new'):
+                       writer_path=None, num_processes=1, run_type='new', small_std=False):
     """
     Generate experiment data
     
@@ -335,7 +355,7 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
                           f"num_unitaries={num_unitaries}, num_datasets={num_datasets}, qnn_name={qnn_name}, "
                           f"device={device}, cheat={cheat}, use_scheduler={use_scheduler}")
 
-    exp_file_path = gen_exp_file(x_qbits, num_unitaries, num_datasets, std)
+    exp_file_path = gen_exp_file(x_qbits, num_unitaries, num_datasets, std, small_std)
     complete_starting_time = time.time()
 
     # (process_id, num_processes, writer, idx_file_path, exp_file_path,
@@ -351,7 +371,7 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
                 idx_file.close()
         worker_args.append((process_id, num_processes, writers[process_id], idx_file_path, exp_file_path, x_qbits,
                             cheat, qnn_name, lr, device, num_layers, opt_name, use_scheduler, num_epochs,
-                            scheduler_factor, scheduler_patience))
+                            scheduler_factor, scheduler_patience, small_std))
     results = ppe.map(process_execution, worker_args)
     for res in results:
         print(res)
