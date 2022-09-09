@@ -122,10 +122,16 @@ def uniform_random_data_mean_pair(mean, std, num_samples, x_qbits):
         #no randomness
         for i in range(0, num_samples//2):
             data.append(uniformly_sample_random_point(mean-std, x_qbits, r_qbits))
+        for i in range(0, num_samples//2):
+            data.append(uniformly_sample_random_point(mean+std, x_qbits, r_qbits))
+
     else:
+
         #randomness
         for i in range(0, num_samples//2 + 1):
             data.append(uniformly_sample_random_point(mean - std, x_qbits, r_qbits))
+        for i in range(0, num_samples//2):
+            data.append(uniformly_sample_random_point(mean+std, x_qbits, r_qbits))
 
     """"
         numbers_mean_std, counter, final_std, final_mean = create_mean_std(mean, std, num_samples)
