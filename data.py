@@ -120,19 +120,25 @@ def uniform_random_data_mean_pair(mean, std, num_samples, x_qbits):
 
     if std % 2 == 0:
         #no randomness
-        for i in range(0, num_samples//2):
+        for i in range(0, num_samples //2):
             data.append(uniformly_sample_random_point(mean-std, x_qbits, r_qbits))
         for i in range(0, num_samples//2):
             data.append(uniformly_sample_random_point(mean+std, x_qbits, r_qbits))
 
     else:
 
-        #randomness
-        for i in range(0, num_samples//2 + 1):
+        #randomness to reduce bias that dataset are not of equal size
+        # thorugh lots of iterations bias is reduced
+        flag = np.random.randint(2, size = 1)
+        for i in range(0, num_samples//2):
             data.append(uniformly_sample_random_point(mean - std, x_qbits, r_qbits))
         for i in range(0, num_samples//2):
             data.append(uniformly_sample_random_point(mean+std, x_qbits, r_qbits))
 
+        if flag == 0:
+            data.append(uniformly_sample_random_point(mean - std, x_qbits, r_qbits))
+        else:
+            data.append(uniformly_sample_random_point(mean + std, x_qbits, r_qbits))
     """"
         numbers_mean_std, counter, final_std, final_mean = create_mean_std(mean, std, num_samples)
         r_qbits = int(np.ceil(np.log2(numbers_mean_std.max())))
