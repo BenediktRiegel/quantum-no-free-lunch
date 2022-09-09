@@ -72,9 +72,12 @@ def calc_hessian(qnn, X, U):
 
 def torch_calc_hessian(qnn, X, U):
     params = qnn.params
+    param_shape = params.shape
+    num_params = len(get_param_indices(params))
+    params = params.reshape((num_params,))
     y_conj = torch.matmul(U, X).conj()
     def func(params):
-        qnn.params = params
+        qnn.params = params.reshape(param_shape)
         return cost_func(X, y_conj, qnn)
     return hessian(func, params)
 
