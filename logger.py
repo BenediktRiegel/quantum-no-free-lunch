@@ -3,10 +3,11 @@ from os.path import exists
 class Writer:
     def __init__(self, file_path, delete=True):
         self.file_path = file_path
-        if not exists(self.file_path) or delete:
-            f = open(file_path, 'w')
-            f.write('')
-            f.close()
+        if file_path is not None:
+            if not exists(self.file_path) or delete:
+                f = open(file_path, 'w')
+                f.write('')
+                f.close()
 
     def append(self, text):
         text = str(text)
@@ -15,10 +16,13 @@ class Writer:
             f.close()
 
     def append_line(self, line):
-        line = str(line)+'\n'
-        with open(self.file_path, 'a') as f:
-            f.write(line)
-            f.close()
+        if self.file_path is None:
+            print(str(line))
+        else:
+            line = str(line)+'\n'
+            with open(self.file_path, 'a') as f:
+                f.write(line)
+                f.close()
 
 
 def str_to_int(string):
@@ -35,14 +39,26 @@ def str_to_float(string):
         return None
 
 
+def split_list_str(string, split_str, last_type=float):
+    string = string.split(split_str)
+    if split_str == ',':
+        return [last_type(el) for el in string]
+    else:
+        split_str = split_str[1:-1]
+        return [split_list_str(el, split_str, last_type) for el in string]
+
+
 def str_to_float_list(string):
     try:
-        string_removed_braces = string[1:-1]
-        splitted_string = string_removed_braces.split(',')
-        if '[' in string_removed_braces:
-            return [str_to_float(el) for el in splitted_string]
-        else:
-            return [float(el) for el in splitted_string]
+        brace_count = 0
+        for brace_count in range(len(string)):
+            if string[brace_count] != '[':
+                break
+        if brace_count == 0:
+            return None
+        string_removed_braces = string[brace_count:-brace_count]
+        split_str = ']'*(brace_count-1) + ',' + '['*(brace_count-1)
+        return split_list_str(string_removed_braces, split_str, float)
     except:
         return None
 
@@ -117,10 +133,29 @@ def read_log(file_path, attributes):    # schmidt_rank, num_points, std=0, U=Non
             # add line_dict only if all the attributes are contained
             if check_dict_for_attributes(line_dict, attributes):
                 result.append(line_dict)
+    # print(f"length of subresult = {len(result)}")
+    return result
+
+
+def read_logs_regex(file_reg, attributes):
+    import glob
+    result = []
+    for file_path in glob.glob(file_reg):
+        result.extend(read_log(file_path, attributes))
     return result
 
 
 if __name__ == '__main__':
-    r = 'qnn=Circuit5QNN, num_layers=20, train_time=481.45711970329285, risk=0.2772327856081471, losses=[0.9484093591936571, 0.002221788974177241], unitary=tensor([[ 3.1653e-01+0.0148j,  2.1989e-01+0.0793j, -3.6469e-01-0.2005j,'
-    r = fix_lists_in_line(r)
-    print(r)
+    r = \
+    [
+        [
+            [1, 2],
+            [3, 4]
+        ],
+        [
+            [5, 6],
+            [7, 8]
+        ]
+    ]
+    r = str(r).replace(' ', '')
+    print(str_to_float_list(r))
