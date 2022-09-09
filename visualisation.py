@@ -3,7 +3,6 @@ from matplotlib.pyplot import cm
 from typing import List
 import numpy as np
 import json
-from data import *
 from metrics import *
 from numpy.polynomial.polynomial import polyfit
 
