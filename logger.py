@@ -3,10 +3,11 @@ from os.path import exists
 class Writer:
     def __init__(self, file_path, delete=True):
         self.file_path = file_path
-        if not exists(self.file_path) or delete:
-            f = open(file_path, 'w')
-            f.write('')
-            f.close()
+        if file_path is not None:
+            if not exists(self.file_path) or delete:
+                f = open(file_path, 'w')
+                f.write('')
+                f.close()
 
     def append(self, text):
         text = str(text)
@@ -15,10 +16,13 @@ class Writer:
             f.close()
 
     def append_line(self, line):
-        line = str(line)+'\n'
-        with open(self.file_path, 'a') as f:
-            f.write(line)
-            f.close()
+        if self.file_path is None:
+            print(str(line))
+        else:
+            line = str(line)+'\n'
+            with open(self.file_path, 'a') as f:
+                f.write(line)
+                f.close()
 
 
 def str_to_int(string):
