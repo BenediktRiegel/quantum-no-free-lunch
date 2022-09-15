@@ -68,7 +68,7 @@ def gen_exp_file(x_qbits, num_unitaries, num_datasets, std_bool=False, small_std
 
     else:
         schmidt_rank = 4
-        num_points = 2
+        num_points = 4
         max_std = min(2**x_qbits - schmidt_rank, schmidt_rank - 1) + 1
         for unitary_idx in range(num_unitaries):
             for dataset_idx in range(num_datasets):
