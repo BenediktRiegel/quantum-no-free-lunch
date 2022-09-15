@@ -37,16 +37,16 @@ def plot_small_std_results():
     x.sort()
     y = [np.array(results[el]).mean() for el in x]
     plt.scatter(x, y, label='risk')
-    for r in [4, 5, 6, 7]:
-        lower_bound = calc_lower_bound(r, 2, 2**4)
+    for r in [4]:
+        lower_bound = calc_lower_bound(r, 4, 2**4)
         y = [lower_bound]*len(x)
-        plt.plot(x, y, marker='.', c='tab:gray', linestyle='dashed', label=f"r={r} bound (2 points)")
+        plt.plot(x, y, marker='.', c='tab:gray', linestyle='dashed', label=f"r={r} bound (4 points)")
     plt.legend()
     plt.xlabel('standard deviation')
     plt.ylabel('risk')
     plt.title('Risk depending on the STD (Schmidt Rank 4)')
     plt.tight_layout()
-    plt.savefig('./plots/small_std/4_qubits_4_schmidt_rank_exp.png')
+    plt.savefig('./plots/small_std/4_qubits_4_schmidt_rank_exp_4_points.png')
 
 
 def main():

@@ -285,6 +285,7 @@ def process_execution(args):
                 else:
                     print(f"\nfinal_std={final_std} so we skip\n")
             else:
+
                 X, std, mean = uniform_random_data_mean_pair(schmidt_rank, std, num_points, x_qbits)
                 X = torch.tensor(np.array(X), dtype=torch.complex128)
                 X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
@@ -590,12 +591,12 @@ if __name__ == '__main__':
     # gradient_3D_plot(U=U, func=root_func(100), name='gradient_map_pow_100')
     scheduler_factor = 0.8
     scheduler_patience = 10
-    num_processes = 1
+    num_processes = 8
     lr = 0.1
     run_type = 'new'
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=True,
-        writer_path='./experimental_results/test/', num_processes=num_processes, run_type=run_type,
+        writer_path='./experimental_results/small_std_results/', num_processes=num_processes, run_type=run_type,
         small_std=True
         )
     # exp(4, 45, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', std=True,

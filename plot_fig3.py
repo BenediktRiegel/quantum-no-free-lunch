@@ -55,6 +55,8 @@ def plot_results():
         plt.plot(x, y, color=color, linestyle='dashed')
     plt.xlabel('Number of Training Pairs')
     plt.ylabel('Average Risk')
+    plt.xticks(range(0, 17))
+    plt.ylim(top=1)
     plt.legend()
     plt.title(f'Average Risk for {num_qbits} Qubit Unitary')
     plt.tight_layout()
