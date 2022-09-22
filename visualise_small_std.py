@@ -4,14 +4,14 @@ from logger import read_logs_regex
 from visualisation import calc_lower_bound
 
 
-def get_small_std_results():
+def get_small_std_results(all_losses=False):
     attributes = dict(
         schmidt_rank='*',
         std='*',
         losses='*',
         risk='*',
     )
-    file_reg = r'./experimental_results/small_std_results/result_*.txt'
+    file_reg = r'./experimental_results/small_std_results/4_points/result_*.txt'
     results = read_logs_regex(file_reg, attributes)
     results_by_std = {}
     num_removed_results = {}
@@ -19,7 +19,7 @@ def get_small_std_results():
         risk = res['risk']
         std = res['std']
         losses = res['losses']
-        if losses[-1] <= 1e-12:
+        if losses[-1] <= 1e-12 or all_losses:
             if std not in results_by_std.keys():
                 results_by_std[std] = []
             results_by_std[std].append(risk)
@@ -31,8 +31,8 @@ def get_small_std_results():
     return results_by_std
 
 
-def plot_small_std_results():
-    results = get_small_std_results()
+def plot_small_std_results(all_losses=False):
+    results = get_small_std_results(all_losses=all_losses)
     x = list(results.keys())
     x.sort()
     y = [np.array(results[el]).mean() for el in x]
@@ -50,7 +50,7 @@ def plot_small_std_results():
 
 
 def main():
-    plot_small_std_results()
+    plot_small_std_results(all_losses=True)
 
 
 if __name__ == '__main__':
