@@ -79,12 +79,12 @@ def torch_neighbourhood_gradients(qnn, X, U, num_samples, sample_step_size, para
         offsets = neighbourhood_params[n_p_idx]
         new_params = torch.empty(org_params.shape, dtype=torch.float64)
         for i in range(len(param_indices)):
-            new_params[param_indices[i]] = org_params[param_indices[i]] + offsets[i]
+            new_params[param_indices[i][0]][param_indices[i][1:]] = org_params[param_indices[i]] + offsets[i]
         # qnn.params = torch.tensor(new_params, requires_grad=True, dtype=torch.float64)
         qnn.params = new_params.requires_grad_(True)
         grads = torch_gradients(qnn, X, y_conj)
         for i in range(len(param_indices)):
-            result[n_p_idx][i] = np.array(grads[param_indices[i]])
+            result[n_p_idx][i] = np.array(grads[param_indices[i][0]][param_indices[i][1:]])
     qnn.params = org_params
     # [len(sample_values), ...,len(sample_values), len(param_indices)]
     #return result.reshape([len(sample_values)]*len(param_indices)+[len(param_indices)]
@@ -102,7 +102,7 @@ def neighbourhood_loss(qnn, X, U, num_samples, sample_step_size, param_indices, 
         offsets = neighbourhood_params[n_p_idx]
         new_params = torch.empty(qnn.params.shape, dtype=torch.float64)
         for i in range(len(param_indices)):
-            new_params[param_indices[i]] = org_params[param_indices[i]] + offsets[i]
+            new_params[param_indices[i][0]][param_indices[i][1:]] = org_params[param_indices[i][0]][param_indices[i][1:]] + offsets[i]
         qnn.params = new_params
         result[n_p_idx] = loss(X, y_conj, qnn)
     qnn.params = org_params
@@ -156,10 +156,10 @@ def simple_plateau_search(process_id, x_qbits, num_layers, sample_step_size, gra
         param_indices = get_param_indices(qnn.params)
 
         cost_func = get_cost_function(qnn, X, U)
-        init_p = np.array([qnn.params[p_idx].item() for p_idx in get_param_indices(qnn.params)])
+        init_p = np.array([qnn.params[p_idx[0]][p_idx[1:]].item() for p_idx in get_param_indices(qnn.params)])
         out = fsolve(cost_func, init_p, xtol=1e-13, maxfev=1000)
         for i in range(len(out)):
-            qnn.params[param_indices[i]] = out[i]
+            qnn.params[param_indices[i][0]][param_indices[i][1:]] = out[i]
 
         print(f'{process_id}: test hessian for indefiniteness')
         # hessian = calc_hessian(qnn, X, U)
