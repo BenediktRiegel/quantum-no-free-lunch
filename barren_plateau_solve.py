@@ -147,7 +147,12 @@ def simple_plateau_search(process_id, x_qbits, num_layers, sample_step_size, gra
         X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
 
         qnn = get_qnn(qnn_name, list(range(x_qbits_prod)), num_layers_prod, device='cpu')
-        qnn.params = qnn.params.detach()
+
+        if isinstance(qnn.params, list):
+            qnn.params = [el.detach() for el in qnn.params]
+        else:
+            qnn.params = qnn.params.detach()
+
         param_indices = get_param_indices(qnn.params)
 
         cost_func = get_cost_function(qnn, X, U)
