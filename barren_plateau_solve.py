@@ -1,11 +1,5 @@
 from scipy.optimize import fsolve
-from barren_plateau_hessian import get_param_indices
-from copy import deepcopy
-import numpy as np
 from classic_training import cost_func as loss
-import torch
-from qnns.qnn import get_qnn
-from data import random_unitary_matrix, uniform_random_data
 from barren_plateau_hessian import *
 from itertools import product
 from concurrent.futures import ProcessPoolExecutor
@@ -203,7 +197,8 @@ def simple_plateau_search(process_id, x_qbits, num_layers, sample_step_size, gra
 
 
 def process_execution(process_id):
-    x_qbits = [1,2]
+    # x_qbits = [1,2]
+    x_qbits = [4]
     num_layers = [3,4,5]
     schmidt_rank = 1
     num_points = 2
@@ -212,7 +207,8 @@ def process_execution(process_id):
     sample_step_size = [1e-12, 1e-10, 1e-08]
     grad_tol = [1e-12, 1e-10, 1e-08]
     loss_tol = [1e-12, 1e-10, 1e-08]
-    QNNs = ['CudaPennylane']
+    # QNNs = ['CudaPennylane']
+    QNNs = ['CudaCircuit6']
     num_trials = 100
 
     for current_trials in range(num_trials):
