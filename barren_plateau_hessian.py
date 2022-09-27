@@ -72,14 +72,26 @@ def calc_hessian(qnn, X, U):
 
 def torch_calc_hessian(qnn, X, U):
     params = qnn.params
-    param_shape = params.shape
-    num_params = len(get_param_indices(params))
-    params = params.reshape((num_params,))
+    # param_shape = params.shape
+    param_shape = [el.shape for el in params]
+    # num_params = len(get_param_indices(params))
+    # params = params.reshape((num_params,))
+    flat_params = []
+    num_params_list = []
+    for el in params:
+        num_params_list.append(len(get_param_indices(el)))
+        flat_params.extend(el.reshape((num_params_list[-1],)).tolist())
     y_conj = torch.matmul(U, X).conj()
     def func(params):
-        qnn.params = params.reshape(param_shape)
+        # qnn.params = params.reshape(param_shape)
+        qnn.params = []
+        current_i = 0
+        for i in range(len(num_params_list)):
+            num_params = num_params_list[i]
+            qnn.params.append(np.array(params[current_i:current_i+num_params]).reshape(param_shape[i]))
+            current_i += num_params
         return cost_func(X, y_conj, qnn)
-    return hessian(func, params)
+    return hessian(func, flat_params)
 
 
 def torch_gradients(qnn, X, y_conj):
