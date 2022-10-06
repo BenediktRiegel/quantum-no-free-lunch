@@ -606,7 +606,7 @@ if __name__ == '__main__':
     run_type = 'new'
     schmidt_ranks = [4]
     num_datapoints = None
-    cost_modification = None
+    cost_modification = funky_func
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=True,
         writer_path='./experimental_results/small_std_results/', num_processes=num_processes, run_type=run_type,
