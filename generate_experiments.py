@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from config import *
 from logger import Writer, log_line_to_dict, check_dict_for_attributes
@@ -190,7 +191,7 @@ def get_scheduler(use_scheduler, optimizer,factor=0.8, patience=3, verbose=False
 def process_execution(args):
     (process_id, num_processes, writer, idx_file_path, exp_file_path,
      x_qbits, cheat, qnn_name, lr, device, num_layers, opt_name, use_scheduler, num_epochs,
-     scheduler_factor, scheduler_patience, small_std) = args
+     scheduler_factor, scheduler_patience, small_std, cost_modification) = args
     print(f'Awesome process with id {process_id}')
     if not exists(idx_file_path):
         raise ValueError('idx_file does not exist')
@@ -243,7 +244,7 @@ def process_execution(args):
             #     torch.save(U, './data/U.pt')
             #     torch.save(X, './data/X.pt')
             starting_time = time.time()
-            losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
+            losses = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
             train_time = time.time() - starting_time
             print(f"\tTraining took {train_time}s")
 
@@ -311,7 +312,8 @@ def process_execution(args):
 
 def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
                        device, cheat, use_scheduler, opt_name, scheduler_factor=0.8, scheduler_patience=3, std=False,
-                       writer_path=None, num_processes=1, run_type='new', small_std=False):
+                       writer_path=None, num_processes=1, run_type='new', small_std=False,
+                      schmidt_ranks=None, num_datapoints=None, cost_modification=None):
     """
     Generate experiment data
     
@@ -356,7 +358,7 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
                           f"num_unitaries={num_unitaries}, num_datasets={num_datasets}, qnn_name={qnn_name}, "
                           f"device={device}, cheat={cheat}, use_scheduler={use_scheduler}")
 
-    exp_file_path = gen_exp_file(x_qbits, num_unitaries, num_datasets, std, small_std)
+    exp_file_path = gen_exp_file(x_qbits, num_unitaries, num_datasets, std, small_std, schmidt_ranks, num_datapoints)
     complete_starting_time = time.time()
 
     # (process_id, num_processes, writer, idx_file_path, exp_file_path,
@@ -372,7 +374,7 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
                 idx_file.close()
         worker_args.append((process_id, num_processes, writers[process_id], idx_file_path, exp_file_path, x_qbits,
                             cheat, qnn_name, lr, device, num_layers, opt_name, use_scheduler, num_epochs,
-                            scheduler_factor, scheduler_patience, small_std))
+                            scheduler_factor, scheduler_patience, small_std, cost_modification))
     results = ppe.map(process_execution, worker_args)
     for res in results:
         print(res)
@@ -399,7 +401,8 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
 
 def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
         optimizer, scheduler_factor=0.8, scheduler_patience=3, std=False, writer_path=None, num_processes=1, run_type='continue',
-        small_std=False):
+        small_std=False,
+        schmidt_ranks=None, num_datapoints=None, cost_modification=None):
     """
     Start experiments, including generation of data as well as plot
 
@@ -408,7 +411,8 @@ def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_na
     generate_exp_data(
         x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
         optimizer, scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=std,
-        writer_path=writer_path, num_processes=num_processes, run_type=run_type, small_std=small_std
+        writer_path=writer_path, num_processes=num_processes, run_type=run_type, small_std=small_std,
+        schmidt_ranks=schmidt_ranks, num_datapoints=num_datapoints, cost_modification=cost_modification,
     )
     # num_datapoints = list(range(0, 2**x_qbits + 1))
     # r_list = list(range(x_qbits + 1))
@@ -568,6 +572,12 @@ def root_func(power):
     return func
 
 
+def funky_func():
+    def func(x):
+        return 1-(torch.exp(-x*10))
+    return func
+
+
 if __name__ == '__main__':
 
     # U = torch.tensor(random_unitary_matrix(1), dtype=torch.complex128, device='cpu')
@@ -594,12 +604,29 @@ if __name__ == '__main__':
     num_processes = 8
     lr = 0.1
     run_type = 'new'
+    schmidt_ranks = [4]
+    num_datapoints = None
+    cost_modification = None
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=True,
         writer_path='./experimental_results/small_std_results/', num_processes=num_processes, run_type=run_type,
-        small_std=True
+        small_std=True,
+        schmidt_ranks=schmidt_ranks,
+        num_datapoints=num_datapoints,
+        cost_modification=cost_modification
         )
     # exp(4, 45, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', std=True,
     #     writer=Writer('./experimental_results/4_qubit_exp_45_std.txt'))
     #exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
         #optimizer, scheduler_factor=0.8, scheduler_patience=3, std=False, writer_path=None):
+    # schmidt_rank = 1
+    # r_qbits = int(np.ceil(np.log2(schmidt_rank)))
+    # x_qbits = 1
+    # size = 2
+    # U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128)
+    # X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, size, x_qbits, r_qbits)))
+    # gradient_3D_plot(U, X, func=torch.log, name='nat_log')
+    # gradient_3D_plot(U, X, func=root_func(5), name='root5')
+    # gradient_3D_plot(U, X, func=root_func(11), name='root11')
+    # gradient_3D_plot(U, X, name='normal')
+    # map_loss_function(U, X, func=funky_func(), name='funky')
