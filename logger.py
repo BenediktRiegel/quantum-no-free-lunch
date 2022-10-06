@@ -92,6 +92,7 @@ def fix_lists_in_line(line):
 
 def log_line_to_dict(line):
     line = fix_lists_in_line(line)
+    line = line.replace('\r', '').replace('\n', '')
     line = line.split(', ')
     result = dict()
     for entry in line:
