@@ -2,12 +2,10 @@ import time
 
 import numpy as np
 import torch
+from cost_modifying_functions import identity
 
 # torch.manual_seed(4241)
 # np.random.seed(4241)
-
-def identity(value):
-    return value
 
 
 def cost_func(X, y_conj, qnn, device='cpu'):

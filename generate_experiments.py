@@ -10,6 +10,7 @@ from copy import deepcopy
 from concurrent.futures import ProcessPoolExecutor
 import glob
 import os
+import cost_modifying_functions
 
 
 def exp_basis_sharma(config, save_dir):
@@ -191,7 +192,7 @@ def get_scheduler(use_scheduler, optimizer,factor=0.8, patience=3, verbose=False
 def process_execution(args):
     (process_id, num_processes, writer, idx_file_path, exp_file_path,
      x_qbits, cheat, qnn_name, lr, device, num_layers, opt_name, use_scheduler, num_epochs,
-     scheduler_factor, scheduler_patience, small_std, cost_modification) = args
+     scheduler_factor, scheduler_patience, small_std) = args
     print(f'Awesome process with id {process_id}')
     if not exists(idx_file_path):
         raise ValueError('idx_file does not exist')
@@ -203,7 +204,7 @@ def process_execution(args):
     current_idx += num_processes
 
     line_dict = None
-    attributes = dict(schmidt_rank='*', num_points='*', std='*')
+    attributes = dict(schmidt_rank='*', num_points='*', std='*', cost_modification='*')
     while True:
         with open(exp_file_path, 'r') as exp_file:
             current_line = exp_file.readline()
@@ -219,6 +220,7 @@ def process_execution(args):
         schmidt_rank = line_dict['schmidt_rank']
         num_points = line_dict['num_points']
         std = line_dict['std']
+        cost_modification = getattr(cost_modifying_functions, line_dict['cost_modification'])()
 
         # Do experiment
         r_qbits = int(np.ceil(np.log2(schmidt_rank)))
@@ -313,7 +315,7 @@ def process_execution(args):
 def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
                        device, cheat, use_scheduler, opt_name, scheduler_factor=0.8, scheduler_patience=3, std=False,
                        writer_path=None, num_processes=1, run_type='new', small_std=False,
-                      schmidt_ranks=None, num_datapoints=None, cost_modification=None):
+                      schmidt_ranks=None, num_datapoints=None, cost_modification="identity"):
     """
     Generate experiment data
     
@@ -358,7 +360,7 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
                           f"num_unitaries={num_unitaries}, num_datasets={num_datasets}, qnn_name={qnn_name}, "
                           f"device={device}, cheat={cheat}, use_scheduler={use_scheduler}")
 
-    exp_file_path = gen_exp_file(x_qbits, num_unitaries, num_datasets, std, small_std, schmidt_ranks, num_datapoints)
+    exp_file_path = gen_exp_file(x_qbits, num_unitaries, num_datasets, std, small_std, schmidt_ranks, num_datapoints, cost_modification)
     complete_starting_time = time.time()
 
     # (process_id, num_processes, writer, idx_file_path, exp_file_path,
@@ -374,7 +376,7 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
                 idx_file.close()
         worker_args.append((process_id, num_processes, writers[process_id], idx_file_path, exp_file_path, x_qbits,
                             cheat, qnn_name, lr, device, num_layers, opt_name, use_scheduler, num_epochs,
-                            scheduler_factor, scheduler_patience, small_std, cost_modification))
+                            scheduler_factor, scheduler_patience, small_std))
     results = ppe.map(process_execution, worker_args)
     for res in results:
         print(res)
@@ -402,7 +404,7 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
 def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
         optimizer, scheduler_factor=0.8, scheduler_patience=3, std=False, writer_path=None, num_processes=1, run_type='continue',
         small_std=False,
-        schmidt_ranks=None, num_datapoints=None, cost_modification=None):
+        schmidt_ranks=None, num_datapoints=None, cost_modification="identity"):
     """
     Start experiments, including generation of data as well as plot
 
@@ -560,24 +562,6 @@ def map_loss_function(U=None, X=None, func=None, name='loss_map'):
     # fig.show()
 
 
-def power_func(power):
-    def func(x):
-        return torch.float_power(torch.abs(x), power)
-    return func
-
-
-def root_func(power):
-    def func(x):
-        return x-x if x < 1e-2 else torch.float_power(torch.abs(x), 1/power)
-    return func
-
-
-def funky_func():
-    def func(x):
-        return 1-(torch.exp(-x*10))
-    return func
-
-
 if __name__ == '__main__':
 
     # U = torch.tensor(random_unitary_matrix(1), dtype=torch.complex128, device='cpu')
@@ -606,7 +590,7 @@ if __name__ == '__main__':
     run_type = 'new'
     schmidt_ranks = [4]
     num_datapoints = None
-    cost_modification = funky_func()
+    cost_modification = "funky_func"
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=False,
         writer_path='./experimental_results/enhanced_plateaus/', num_processes=num_processes, run_type=run_type,
