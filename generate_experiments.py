@@ -270,7 +270,7 @@ def process_execution(args):
                     X = torch.tensor(np.array(X), dtype=torch.complex128)
                     X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
                     starting_time = time.time()
-                    loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler)
+                    loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
                     train_time_std = time.time() - starting_time
                     print(f"\tTraining took {train_time_std}s")
                     risk_std = quantum_risk(U, qnn.get_matrix_V())
@@ -294,7 +294,7 @@ def process_execution(args):
                 X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
 
                 starting_time = time.time()
-                losses = train(X, U, qnn, num_epochs, optimizer, scheduler)
+                losses = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
                 train_time = time.time() - starting_time
                 print(f"\tTraining took {train_time}s")
                 risk = quantum_risk(U, qnn.get_matrix_V())
