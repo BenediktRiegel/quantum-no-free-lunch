@@ -46,11 +46,11 @@ def get_exp_six_qubit_unitary_config():
 def gen_exp_file(x_qbits, num_unitaries, num_datasets, std_bool=False, small_std=False, schmidt_ranks=None, num_datapoints=None, std_list=None, cost_modification="identity"):
     file_path = f'./data/{x_qbits}_exp_file.txt'
     writer = Writer(file_path)
-    if schmidt_ranks is None:
-        schmidt_ranks = [2**i for i in range(x_qbits+1)]
-    if num_datapoints is None:
-        num_datapoints = list(range(1, 2 ** x_qbits + 1))
     if not small_std:
+        if schmidt_ranks is None:
+            schmidt_ranks = [2**i for i in range(x_qbits+1)]
+        if num_datapoints is None:
+            num_datapoints = list(range(1, 2 ** x_qbits + 1))
         for schmidt_rank in schmidt_ranks:
             for num_points in num_datapoints:
                 for unitary_idx in range(num_unitaries):
@@ -69,12 +69,16 @@ def gen_exp_file(x_qbits, num_unitaries, num_datasets, std_bool=False, small_std
                                                    f"unitary_idx={unitary_idx}, dataset_idx={dataset_idx}, cost_modification={cost_modification}")
 
     else:
-        schmidt_rank = 4
-        num_points = 4
-        max_std = min(2**x_qbits - schmidt_rank, schmidt_rank - 1) + 1
-        for unitary_idx in range(num_unitaries):
-            for dataset_idx in range(num_datasets):
-                for std in range(max_std):
-                    writer.append_line(f"schmidt_rank={schmidt_rank}, num_points={num_points}, std={std}, "
-                                       f"unitary_idx={unitary_idx}, dataset_idx={dataset_idx}, cost_modification={cost_modification}")
+        if schmidt_ranks is None:
+            schmidt_ranks = [4]
+        if num_datapoints is None:
+            num_datapoints = [2]
+        for schmidt_rank in schmidt_ranks:
+            for num_points in num_datapoints:
+                max_std = min(2**x_qbits - schmidt_rank, schmidt_rank - 1) + 1
+                for unitary_idx in range(num_unitaries):
+                    for dataset_idx in range(num_datasets):
+                        for std in range(max_std):
+                            writer.append_line(f"schmidt_rank={schmidt_rank}, num_points={num_points}, std={std}, "
+                                               f"unitary_idx={unitary_idx}, dataset_idx={dataset_idx}, cost_modification={cost_modification}")
     return file_path

@@ -589,13 +589,13 @@ if __name__ == '__main__':
     lr = 0.1
     run_type = 'new'
     schmidt_ranks = [4]
-    num_datapoints = None
+    num_datapoints = list(range(1, 16))
     std_list = [1, 2]
     cost_modification = "funky_func"
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
-        scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=True,
-        writer_path='./experimental_results/enhanced_plateaus_std/', num_processes=num_processes, run_type=run_type,
-        small_std=False,
+        scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=False,
+        writer_path='./experimental_results/enhanced_plateaus_small_std/', num_processes=num_processes, run_type=run_type,
+        small_std=True,
         schmidt_ranks=schmidt_ranks,
         num_datapoints=num_datapoints,
         std_list=std_list,
