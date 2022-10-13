@@ -43,7 +43,7 @@ def get_exp_six_qubit_unitary_config():
     return gen_config(1, 1, 6, 6, 10, 10, 100, 1, 0, 0.01, 8, 120, True, 'SGD')
 
 
-def gen_exp_file(x_qbits, num_unitaries, num_datasets, std_bool=False, small_std=False, schmidt_ranks=None, num_datapoints=None, cost_modification="identity"):
+def gen_exp_file(x_qbits, num_unitaries, num_datasets, std_bool=False, small_std=False, schmidt_ranks=None, num_datapoints=None, std_list=None, cost_modification="identity"):
     file_path = f'./data/{x_qbits}_exp_file.txt'
     writer = Writer(file_path)
     if schmidt_ranks is None:
@@ -60,7 +60,9 @@ def gen_exp_file(x_qbits, num_unitaries, num_datasets, std_bool=False, small_std
                                                f"unitary_idx={unitary_idx}, dataset_idx={dataset_idx}, cost_modification={cost_modification}")
                         else:
                             max_rank = 2 ** x_qbits
-                            for std in range(1, max_rank):
+                            if not std_list:
+                                std_list = range(1, max_rank)
+                            for std in std_list:
                                 if min(schmidt_rank - 1, max_rank - schmidt_rank) < 3 * std:
                                     continue
                                 writer.append_line(f"schmidt_rank={schmidt_rank}, num_points={num_points}, std={std}, "

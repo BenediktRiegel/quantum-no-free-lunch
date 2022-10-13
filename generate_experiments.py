@@ -315,7 +315,7 @@ def process_execution(args):
 def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
                        device, cheat, use_scheduler, opt_name, scheduler_factor=0.8, scheduler_patience=3, std=False,
                        writer_path=None, num_processes=1, run_type='new', small_std=False,
-                      schmidt_ranks=None, num_datapoints=None, cost_modification="identity"):
+                      schmidt_ranks=None, num_datapoints=None, std_list=None, cost_modification="identity"):
     """
     Generate experiment data
     
@@ -360,7 +360,7 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
                           f"num_unitaries={num_unitaries}, num_datasets={num_datasets}, qnn_name={qnn_name}, "
                           f"device={device}, cheat={cheat}, use_scheduler={use_scheduler}")
 
-    exp_file_path = gen_exp_file(x_qbits, num_unitaries, num_datasets, std, small_std, schmidt_ranks, num_datapoints, cost_modification)
+    exp_file_path = gen_exp_file(x_qbits, num_unitaries, num_datasets, std, small_std, schmidt_ranks, num_datapoints, std_list, cost_modification)
     complete_starting_time = time.time()
 
     # (process_id, num_processes, writer, idx_file_path, exp_file_path,
@@ -404,7 +404,7 @@ def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_da
 def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
         optimizer, scheduler_factor=0.8, scheduler_patience=3, std=False, writer_path=None, num_processes=1, run_type='continue',
         small_std=False,
-        schmidt_ranks=None, num_datapoints=None, cost_modification="identity"):
+        schmidt_ranks=None, num_datapoints=None, std_list=None, cost_modification="identity"):
     """
     Start experiments, including generation of data as well as plot
 
@@ -414,7 +414,7 @@ def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_na
         x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
         optimizer, scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=std,
         writer_path=writer_path, num_processes=num_processes, run_type=run_type, small_std=small_std,
-        schmidt_ranks=schmidt_ranks, num_datapoints=num_datapoints, cost_modification=cost_modification,
+        schmidt_ranks=schmidt_ranks, num_datapoints=num_datapoints, std_list=std_list, cost_modification=cost_modification,
     )
     # num_datapoints = list(range(0, 2**x_qbits + 1))
     # r_list = list(range(x_qbits + 1))
@@ -590,13 +590,15 @@ if __name__ == '__main__':
     run_type = 'new'
     schmidt_ranks = [4]
     num_datapoints = None
+    std_list = [1, 2]
     cost_modification = "funky_func"
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
-        scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=False,
+        scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=True,
         writer_path='./experimental_results/enhanced_plateaus/', num_processes=num_processes, run_type=run_type,
         small_std=False,
         schmidt_ranks=schmidt_ranks,
         num_datapoints=num_datapoints,
+        std_list=std_list,
         cost_modification=cost_modification
         )
     # exp(4, 45, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', std=True,
