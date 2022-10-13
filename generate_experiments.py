@@ -589,7 +589,7 @@ if __name__ == '__main__':
     lr = 0.1
     run_type = 'new'
     schmidt_ranks = [4]
-    num_datapoints = list(range(1, 16))
+    num_datapoints = list(range(2, 16))
     std_list = [1, 2]
     cost_modification = "funky_func"
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
