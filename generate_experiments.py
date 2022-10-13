@@ -594,7 +594,7 @@ if __name__ == '__main__':
     cost_modification = "funky_func"
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=True,
-        writer_path='./experimental_results/enhanced_plateaus/', num_processes=num_processes, run_type=run_type,
+        writer_path='./experimental_results/enhanced_plateaus_std/', num_processes=num_processes, run_type=run_type,
         small_std=False,
         schmidt_ranks=schmidt_ranks,
         num_datapoints=num_datapoints,
