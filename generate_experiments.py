@@ -220,7 +220,8 @@ def process_execution(args):
         schmidt_rank = line_dict['schmidt_rank']
         num_points = line_dict['num_points']
         std = line_dict['std']
-        cost_modification = getattr(cost_modifying_functions, line_dict['cost_modification'])()
+        if cost_modification is not None:
+            cost_modification = getattr(cost_modifying_functions, line_dict['cost_modification'])
 
         # Do experiment
         r_qbits = int(np.ceil(np.log2(schmidt_rank)))
