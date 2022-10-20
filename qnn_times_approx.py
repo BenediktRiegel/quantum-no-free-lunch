@@ -61,7 +61,7 @@ def gen_qnn_vs_data(num_workers, num_unitaries, layers, writer, lr=0.1, schedule
 
 def main():
     num_unitaries = 10
-    layers = [20, 25, 30, 35, 40, 45]
+    layers = [20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80]
     uncomplete_file = './experimental_results/qnn_vs/qnn_vs_'
     file_path = uncomplete_file + '0.txt'
     file_num = 0
