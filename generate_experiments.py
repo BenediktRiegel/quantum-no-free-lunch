@@ -220,6 +220,7 @@ def process_execution(args):
         schmidt_rank = line_dict['schmidt_rank']
         num_points = line_dict['num_points']
         std = line_dict['std']
+        cost_modification = line_dict['cost_modification']
         if cost_modification is not None:
             cost_modification = getattr(cost_modifying_functions, line_dict['cost_modification'])
 
@@ -589,13 +590,13 @@ if __name__ == '__main__':
     num_processes = 8
     lr = 0.1
     run_type = 'new'
-    schmidt_ranks = [4]
-    num_datapoints = list(range(2, 16))
-    std_list = [1, 2]
-    cost_modification = "funky_func"
+    schmidt_ranks = [5, 6]
+    num_datapoints = [2]
+    std_list = None
+    cost_modification = None
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=False,
-        writer_path='./experimental_results/enhanced_plateaus_small_std/', num_processes=num_processes, run_type=run_type,
+        writer_path='./experimental_results/small_std/', num_processes=num_processes, run_type=run_type,
         small_std=True,
         schmidt_ranks=schmidt_ranks,
         num_datapoints=num_datapoints,
