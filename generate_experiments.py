@@ -290,28 +290,43 @@ def process_execution(args):
                 else:
                     print(f"\nfinal_std={final_std} so we skip\n")
             else:
+                try:
+                    X, std, mean = uniform_random_data_mean_pair(schmidt_rank, std, num_points, x_qbits)
+                    X = torch.tensor(np.array(X), dtype=torch.complex128)
+                    X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
 
-                X, std, mean = uniform_random_data_mean_pair(schmidt_rank, std, num_points, x_qbits)
-                X = torch.tensor(np.array(X), dtype=torch.complex128)
-                X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
-
-                starting_time = time.time()
-                losses = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
-                train_time = time.time() - starting_time
-                print(f"\tTraining took {train_time}s")
-                risk = quantum_risk(U, qnn.get_matrix_V())
-                # Log everything
-                if writer:
-                    losses_str = str(losses).replace(' ', '')
-                    qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
-                    u_str = str(qnn.params.tolist()).replace(' ', '')
-                    writer.append_line(
-                        info_string + f", std={std}, mean={mean}, losses={losses}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
-                    )
-        current_idx += num_processes
-        with open(idx_file_path, 'w') as idx_file:
-            idx_file.write(str(current_idx))
-            idx_file.close()
+                    starting_time = time.time()
+                    losses = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
+                    train_time = time.time() - starting_time
+                    print(f"\tTraining took {train_time}s")
+                    risk = quantum_risk(U, qnn.get_matrix_V())
+                    # Log everything
+                    if writer:
+                        losses_str = str(losses).replace(' ', '')
+                        qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                        u_str = str(qnn.params.tolist()).replace(' ', '')
+                        writer.append_line(
+                            info_string + f", std={std}, mean={mean}, losses={losses}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                        )
+                except Exception as e:
+                    print(f"{process_id}: {type(e)}")
+                    if hasattr(e, 'message'):
+                        print(f"{process_id}: {e.message}")
+                    else:
+                        print(f"{process_id}: {e}")
+                    raise e
+        try:
+            current_idx += num_processes
+            with open(idx_file_path, 'w') as idx_file:
+                idx_file.write(str(current_idx))
+                idx_file.close()
+        except Exception as e:
+            print(f"{process_id}: {type(e)}")
+            if hasattr(e, 'message'):
+                print(f"{process_id}: {e.message}")
+            else:
+                print(f"{process_id}: {e}")
+            raise e
 
 
 def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
