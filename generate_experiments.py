@@ -604,11 +604,11 @@ if __name__ == '__main__':
     scheduler_patience = 10
     num_processes = 8
     lr = 0.1
-    run_type = 'new'
-    schmidt_ranks = [5, 6]
+    run_type = 'continue'
+    schmidt_ranks = [7]
     num_datapoints = [2]
     std_list = None
-    cost_modification = None
+    cost_modification = "identity"
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=False,
         writer_path='./experimental_results/small_std/', num_processes=num_processes, run_type=run_type,
