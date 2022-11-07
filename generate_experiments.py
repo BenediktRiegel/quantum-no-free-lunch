@@ -196,108 +196,63 @@ def process_execution(args):
     print(f'Awesome process with id {process_id}')
     if not exists(idx_file_path):
         raise ValueError('idx_file does not exist')
-    current_idx = process_id - num_processes
-    with open(idx_file_path, 'r') as idx_file:
-        first_line = idx_file.readline().replace('\n', '')
-        current_idx = int(first_line)
-        idx_file.close()
-    current_idx += num_processes
+    try:
+        current_idx = process_id - num_processes
+        with open(idx_file_path, 'r') as idx_file:
+            first_line = idx_file.readline().replace('\n', '')
+            current_idx = int(first_line)
+            idx_file.close()
+        current_idx += num_processes
 
-    line_dict = None
-    attributes = dict(schmidt_rank='*', num_points='*', std='*', cost_modification='*')
-    while True:
-        with open(exp_file_path, 'r') as exp_file:
-            current_line = exp_file.readline()
-            for i in range(current_idx-1):
+        line_dict = None
+        attributes = dict(schmidt_rank='*', num_points='*', std='*', cost_modification='*')
+        while True:
+            with open(exp_file_path, 'r') as exp_file:
                 current_line = exp_file.readline()
-            line_dict = log_line_to_dict(current_line)
-            exp_file.close()
+                for i in range(current_idx-1):
+                    current_line = exp_file.readline()
+                line_dict = log_line_to_dict(current_line)
+                exp_file.close()
 
-        if line_dict is None or not check_dict_for_attributes(line_dict, attributes):
-            return
+            if line_dict is None or not check_dict_for_attributes(line_dict, attributes):
+                return
 
-        # line_dict entries: schmidt_rank, num_points, std, unitary_idx, dataset_idx
-        schmidt_rank = line_dict['schmidt_rank']
-        num_points = line_dict['num_points']
-        std = line_dict['std']
-        cost_modification = line_dict['cost_modification']
-        if cost_modification is not None:
-            cost_modification = getattr(cost_modifying_functions, line_dict['cost_modification'])
+            # line_dict entries: schmidt_rank, num_points, std, unitary_idx, dataset_idx
+            schmidt_rank = line_dict['schmidt_rank']
+            num_points = line_dict['num_points']
+            std = line_dict['std']
+            cost_modification = line_dict['cost_modification']
+            if cost_modification is not None:
+                cost_modification = getattr(cost_modifying_functions, line_dict['cost_modification'])
 
-        # Do experiment
-        r_qbits = int(np.ceil(np.log2(schmidt_rank)))
-        x_wires = list(range(x_qbits))
+            # Do experiment
+            r_qbits = int(np.ceil(np.log2(schmidt_rank)))
+            x_wires = list(range(x_qbits))
 
-        if cheat:
-            U, unitary_qnn_params = create_unitary_from_circuit(qnn_name, x_wires, cheat, device='cpu')
-        else:
-            U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
-        print(f"Run: current_exp_idx={current_idx}")
-        info_string = f"schmidt_rank={schmidt_rank}, num_points={num_points}"
-
-        qnn = get_qnn(qnn_name, x_wires, num_layers, device=device)
-        # torch.save(qnn.params, 'files_for_alex/qnn_params.pt')
-        optimizer = get_optimizer(opt_name, qnn, lr)
-        scheduler = get_scheduler(use_scheduler, optimizer, factor=scheduler_factor, patience=scheduler_patience)
-
-        if std == 0:
-            X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
-            X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
-            # if r_idx == 2 and num_points_idx == 3:
-            #     torch.save(qnn.params, './data/qnn_params.pt')
-            #     torch.save(U, './data/U.pt')
-            #     torch.save(X, './data/X.pt')
-            starting_time = time.time()
-            losses = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
-            train_time = time.time() - starting_time
-            print(f"\tTraining took {train_time}s")
-
-            risk = quantum_risk(U, qnn.get_matrix_V())
-            # Log everything
-            if writer:
-                losses_str = str(losses).replace(' ', '')
-                qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
-                u_str = str(qnn.params.tolist()).replace(' ', '')
-                writer.append_line(
-                    info_string + f", std={0}, losses={losses_str}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
-                )
-        else:
-            if not small_std:
-                losses = []
-                risk = []
-                train_time = []
-                max_rank = 2 ** x_qbits
-                X, final_std, final_mean = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits, max_rank)
-                if final_std != 0:
-                    X = torch.tensor(np.array(X), dtype=torch.complex128)
-                    X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
-                    starting_time = time.time()
-                    loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
-                    train_time_std = time.time() - starting_time
-                    print(f"\tTraining took {train_time_std}s")
-                    risk_std = quantum_risk(U, qnn.get_matrix_V())
-                    losses.append(loss_std)
-                    risk.append(risk_std)
-                    train_time.append(train_time_std)
-                    # Log everything
-                    if writer:
-                        losses_str = str(losses).replace(' ', '')
-                        qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
-                        u_str = str(qnn.params.tolist()).replace(' ', '')
-                        writer.append_line(
-                            info_string + f", std={final_std}, mean={final_mean}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
-                        )
-                else:
-                    print(f"\nfinal_std={final_std} so we skip\n")
+            if cheat:
+                U, unitary_qnn_params = create_unitary_from_circuit(qnn_name, x_wires, cheat, device='cpu')
             else:
-                X, std, mean = uniform_random_data_mean_pair(schmidt_rank, std, num_points, x_qbits)
-                X = torch.tensor(np.array(X), dtype=torch.complex128)
-                X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                U = torch.tensor(random_unitary_matrix(x_qbits), dtype=torch.complex128, device=device)
+            print(f"Run: current_exp_idx={current_idx}")
+            info_string = f"schmidt_rank={schmidt_rank}, num_points={num_points}"
 
+            qnn = get_qnn(qnn_name, x_wires, num_layers, device=device)
+            # torch.save(qnn.params, 'files_for_alex/qnn_params.pt')
+            optimizer = get_optimizer(opt_name, qnn, lr)
+            scheduler = get_scheduler(use_scheduler, optimizer, factor=scheduler_factor, patience=scheduler_patience)
+
+            if std == 0:
+                X = torch.from_numpy(np.array(uniform_random_data(schmidt_rank, num_points, x_qbits, r_qbits)))
+                X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                # if r_idx == 2 and num_points_idx == 3:
+                #     torch.save(qnn.params, './data/qnn_params.pt')
+                #     torch.save(U, './data/U.pt')
+                #     torch.save(X, './data/X.pt')
                 starting_time = time.time()
                 losses = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
                 train_time = time.time() - starting_time
                 print(f"\tTraining took {train_time}s")
+
                 risk = quantum_risk(U, qnn.get_matrix_V())
                 # Log everything
                 if writer:
@@ -305,13 +260,65 @@ def process_execution(args):
                     qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
                     u_str = str(qnn.params.tolist()).replace(' ', '')
                     writer.append_line(
-                        info_string + f", std={std}, mean={mean}, losses={losses}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                        info_string + f", std={0}, losses={losses_str}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
                     )
+            else:
+                if not small_std:
+                    losses = []
+                    risk = []
+                    train_time = []
+                    max_rank = 2 ** x_qbits
+                    X, final_std, final_mean = uniform_random_data_mean(schmidt_rank, std, num_points, x_qbits, r_qbits, max_rank)
+                    if final_std != 0:
+                        X = torch.tensor(np.array(X), dtype=torch.complex128)
+                        X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
+                        starting_time = time.time()
+                        loss_std = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
+                        train_time_std = time.time() - starting_time
+                        print(f"\tTraining took {train_time_std}s")
+                        risk_std = quantum_risk(U, qnn.get_matrix_V())
+                        losses.append(loss_std)
+                        risk.append(risk_std)
+                        train_time.append(train_time_std)
+                        # Log everything
+                        if writer:
+                            losses_str = str(losses).replace(' ', '')
+                            qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                            u_str = str(qnn.params.tolist()).replace(' ', '')
+                            writer.append_line(
+                                info_string + f", std={final_std}, mean={final_mean}, losses={losses_str}, risk={risk_std}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                            )
+                    else:
+                        print(f"\nfinal_std={final_std} so we skip\n")
+                else:
+                    X, std, mean = uniform_random_data_mean_pair(schmidt_rank, std, num_points, x_qbits)
+                    X = torch.tensor(np.array(X), dtype=torch.complex128)
+                    X = X.reshape((X.shape[0], int(X.shape[1] / U.shape[0]), U.shape[0])).permute(0, 2, 1)
 
-        current_idx += num_processes
-        with open(idx_file_path, 'w') as idx_file:
-            idx_file.write(str(current_idx))
-            idx_file.close()
+                    starting_time = time.time()
+                    losses = train(X, U, qnn, num_epochs, optimizer, scheduler, cost_modification=cost_modification)
+                    train_time = time.time() - starting_time
+                    print(f"\tTraining took {train_time}s")
+                    risk = quantum_risk(U, qnn.get_matrix_V())
+                    # Log everything
+                    if writer:
+                        losses_str = str(losses).replace(' ', '')
+                        qnn_params_str = str(qnn.params.tolist()).replace(' ', '')
+                        u_str = str(qnn.params.tolist()).replace(' ', '')
+                        writer.append_line(
+                            info_string + f", std={std}, mean={mean}, losses={losses}, risk={risk}, train_time={train_time}, qnn={qnn_params_str}, unitary={u_str}"
+                        )
+
+            current_idx += num_processes
+            with open(idx_file_path, 'w') as idx_file:
+                idx_file.write(str(current_idx))
+                idx_file.close()
+    except Exception as e:
+        if hasattr(e, 'message'):
+            print(e.message)
+        else:
+            print(e)
+        raise e
 
 
 def generate_exp_data(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name,
