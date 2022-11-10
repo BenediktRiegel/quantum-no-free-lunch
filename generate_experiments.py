@@ -430,7 +430,7 @@ def exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_na
     # generate_risk_plot(results, num_datapoints, x_qbits, r_list)
 
 
-def gradient_3D_plot(U=None, X=None, func=None, name='gradient_map'):
+def gradient_3D_plot(U=None, X=None, func=None, name='gradient_map', heatmap=False):
     from classic_training import cost_func
     # Parameters
     x_qbits = 1
@@ -491,21 +491,46 @@ def gradient_3D_plot(U=None, X=None, func=None, name='gradient_map'):
             # print('Gradients', np.array(qnn.params.grad))
             result[-1].append(np.linalg.norm(np.array(qnn.params.grad)))    #cost_func(X,y_conj,qnn, device)
 
-    import plotly.graph_objects as go
-    import plotly
+    if not heatmap:
+        import plotly.graph_objects as go
+        import plotly
 
-    result = np.array(result)
+        result = np.array(result)
 
-    fig = go.Figure(data=[go.Surface(x=param1_list, y=param2_list, z=result)])
-    fig.update_traces(contours_z=dict(show=True, usecolormap=True,
-                                      highlightcolor="limegreen", project_z=True))
-    fig.update_layout(title='Gradient Map', autosize=True)
+        fig = go.Figure(data=[go.Surface(x=param1_list, y=param2_list, z=result)])
+        fig.update_traces(contours_z=dict(show=True, usecolormap=True,
+                                          highlightcolor="limegreen", project_z=True))
+        fig.update_layout(title='Gradient Map', autosize=True)
 
-    plotly.offline.plot(fig, filename=f'./plots/loss_map/{name}.html')
-    # fig.show()
+        plotly.offline.plot(fig, filename=f'./plots/loss_map/{name}.html')
+        # fig.show()
+
+    else:
+        import seaborn as sns
+
+        num_ticks = np.linspace(param_idx1_range[0], 2,
+                                num=int(param_idx1_range[1] / param_idx1_range[2]), endpoint=False)
+        ticks = []
+        for i in range(len(num_ticks)):
+            if i % 15 == 0:
+                ticks.append(f"{np.round(num_ticks[i], 1)}π")
+            else:
+                ticks.append("")
+        # ticks.append(f"{np.round(num_ticks[-1], 1)}π")
+        heat_map = sns.heatmap(result, linewidth=0, annot=False,
+                               xticklabels=ticks, yticklabels=ticks, rasterized=True)
+        heat_map.invert_yaxis()
+        # plt.imshow(result, interpolation='nearest', cmap="twilight")
+        # plt.title('Loss')
+        # plt.tight_layout()
+        plt.yticks(rotation=0)
+        plt.xlabel("$p_0$", fontsize=15)
+        plt.ylabel("$p_1$\t  ", rotation=0, fontsize=15)
+        plt.savefig(f'./plots/loss_map/{name}_heatmap.pdf')
+        plt.clf()
 
 
-def map_loss_function(U=None, X=None, func=None, name='loss_map'):
+def map_loss_function(U=None, X=None, func=None, name='loss_map', heatmap=False):
     from classic_training import cost_func
     # Parameters
     x_qbits = 1
@@ -557,18 +582,43 @@ def map_loss_function(U=None, X=None, func=None, name='loss_map'):
             else:
                 result[-1].append(func(cost_func(X, y_conj, qnn, device=device)))
 
-    import plotly.graph_objects as go
-    import plotly
+    if not heatmap:
+        import plotly.graph_objects as go
+        import plotly
 
-    result = np.array(result)
+        result = np.array(result)
 
-    fig = go.Figure(data=[go.Surface(x=param1_list, y=param2_list, z=result)])
-    fig.update_traces(contours_z=dict(show=True, usecolormap=True,
-                                      highlightcolor="limegreen", project_z=True))
-    fig.update_layout(title='Loss Map', autosize=True)
+        fig = go.Figure(data=[go.Surface(x=param1_list, y=param2_list, z=result)])
+        fig.update_traces(contours_z=dict(show=True, usecolormap=True,
+                                          highlightcolor="limegreen", project_z=True))
+        fig.update_layout(title='Loss Map', autosize=True)
 
-    plotly.offline.plot(fig, filename=f'./plots/loss_map/{name}.html')
-    # fig.show()
+        plotly.offline.plot(fig, filename=f'./plots/loss_map/{name}.html')
+        # fig.show()
+
+    else:
+        import seaborn as sns
+
+        num_ticks = np.linspace(param_idx1_range[0], 2,
+                                num=int(param_idx1_range[1] / param_idx1_range[2]), endpoint=False)
+        ticks = []
+        for i in range(len(num_ticks)):
+            if i % 15 == 0:
+                ticks.append(f"{np.round(num_ticks[i], 1)}π")
+            else:
+                ticks.append("")
+        # ticks.append(f"{np.round(num_ticks[-1], 1)}π")
+        heat_map = sns.heatmap(result, linewidth=0, annot=False,
+                               xticklabels=ticks, yticklabels=ticks, rasterized=True)
+        heat_map.invert_yaxis()
+        # plt.imshow(result, interpolation='nearest', cmap="twilight")
+        # plt.title('Loss')
+        # plt.tight_layout()
+        plt.yticks(rotation=0)
+        plt.xlabel("$p_0$", fontsize=15)
+        plt.ylabel("$p_1$\t  ", rotation=0, fontsize=15)
+        plt.savefig(f'./plots/loss_map/{name}_heatmap.pdf')
+        plt.clf()
 
 
 if __name__ == '__main__':
@@ -592,14 +642,15 @@ if __name__ == '__main__':
     # gradient_3D_plot(U=U, func=root_func(7), name='gradient_map_pow_7')
     # map_loss_function(U=U, func=root_func(100), name='loss_map_pow_100')
     # gradient_3D_plot(U=U, func=root_func(100), name='gradient_map_pow_100')
+
     scheduler_factor = 0.8
     scheduler_patience = 10
     num_processes = 8
     lr = 0.1
     run_type = 'new'
-    schmidt_ranks = [7]
+    schmidt_ranks = [4, 6]
     num_datapoints = [2]
-    std_list = None
+    std_list = [1, 3, 5]
     cost_modification = "identity"
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=False,
@@ -610,10 +661,12 @@ if __name__ == '__main__':
         std_list=std_list,
         cost_modification=cost_modification
         )
+
     # exp(4, 45, 1000, 0.1, 1, 1, 'CudaPennylane', 'cpu', None, True, 'Adam', std=True,
     #     writer=Writer('./experimental_results/4_qubit_exp_45_std.txt'))
     #exp(x_qbits, num_layers, num_epochs, lr, num_unitaries, num_datasets, qnn_name, device, cheat, use_scheduler,
         #optimizer, scheduler_factor=0.8, scheduler_patience=3, std=False, writer_path=None):
+    # from cost_modifying_functions import funky_func, identity
     # schmidt_rank = 1
     # r_qbits = int(np.ceil(np.log2(schmidt_rank)))
     # x_qbits = 1
@@ -624,4 +677,7 @@ if __name__ == '__main__':
     # gradient_3D_plot(U, X, func=root_func(5), name='root5')
     # gradient_3D_plot(U, X, func=root_func(11), name='root11')
     # gradient_3D_plot(U, X, name='normal')
-    # map_loss_function(U, X, func=funky_func(), name='funky')
+    # map_loss_function(U, X, func=funky_func, name='funky_loss', heatmap=True)
+    # map_loss_function(U, X, func=identity, name='identity_loss', heatmap=True)
+    # gradient_3D_plot(U, X, func=funky_func, name='funky_grad', heatmap=True)
+    # gradient_3D_plot(U, X, func=identity, name='identity_grad', heatmap=True)
