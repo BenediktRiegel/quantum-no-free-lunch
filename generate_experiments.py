@@ -648,10 +648,10 @@ if __name__ == '__main__':
     num_processes = 8
     lr = 0.1
     run_type = 'new'
-    schmidt_ranks = [4, 6]
-    num_datapoints = [2]
-    std_list = [1, 3, 5]
-    cost_modification = "identity"
+    schmidt_ranks = [4]
+    num_datapoints = [2, 4, 6, 8, 10, 12, 14, 16]
+    std_list = [1, 3]
+    cost_modification = "funky_func"
     exp(4, 60, 1000, lr, 10, 100, 'CudaPennylane', 'cpu', None, True, 'Adam',
         scheduler_factor=scheduler_factor, scheduler_patience=scheduler_patience, std=False,
         writer_path='./experimental_results/small_std/', num_processes=num_processes, run_type=run_type,
