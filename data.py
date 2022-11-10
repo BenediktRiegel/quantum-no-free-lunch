@@ -118,7 +118,7 @@ def uniform_random_data_mean_pair(mean, std, num_samples, x_qbits):
     tuple = create_pairs(mean, lower_bound, upper_bound, std)
     r_qbits = int(np.ceil(mean+std))
 
-    if std % 2 == 0:
+    if num_samples % 2 == 0:
         #no randomness
         for i in range(0, num_samples //2):
             data.append(uniformly_sample_random_point(mean-std, x_qbits, r_qbits))
