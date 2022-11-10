@@ -76,9 +76,16 @@ def gen_exp_file(x_qbits, num_unitaries, num_datasets, std_bool=False, small_std
         for schmidt_rank in schmidt_ranks:
             for num_points in num_datapoints:
                 max_std = min(2**x_qbits - schmidt_rank, schmidt_rank - 1) + 1
+                if std_list is None:
+                    temp_std_list = list(range(max_std))
+                else:
+                    temp_std_list = []
+                    for std in std_list:
+                        if std < max_std:
+                            temp_std_list.append(std)
                 for unitary_idx in range(num_unitaries):
                     for dataset_idx in range(num_datasets):
-                        for std in range(max_std):
+                        for std in temp_std_list:
                             writer.append_line(f"schmidt_rank={schmidt_rank}, num_points={num_points}, std={std}, "
                                                f"unitary_idx={unitary_idx}, dataset_idx={dataset_idx}, cost_modification={cost_modification}")
     return file_path
