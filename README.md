@@ -6,7 +6,7 @@ To set up the project, run <code>poetry install</code>
 
 The code for generating and running experiments can be found in <code>generate_experiments.py</code>
 
-The parameter configurations for different experiments can be found in <code>config.py</code>, where e.g. <code>get_exp_one_qubit_unitary_config</code> refers to the experimental setup for single-qubit unitary experiment.
+The parameter configurations for different experiments can be found in <code>config.py</code>, where e.g. <code>get_exp_one_qubit_unitary_config()</code> refers to the experimental setup for single-qubit unitary experiment.
 
 To run the single-qubit unitary and the 4-qubit unitary experiments, simply call <code>test_fig2()</code> and <code>test_fig3()</code> to generate the results.
 
