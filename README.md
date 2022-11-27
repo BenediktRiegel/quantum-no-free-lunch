@@ -1,25 +1,15 @@
 # Research Project<br>Quantum No-Free-Lunch
 
-This package uses Pennylane.
+## Setup
+To set up the project, run <code>poetry install</code>
+## Running experiments
 
-## Momentane Erxperiment: weight initalization und Lr-scheduler ist jetzt bei allen drinnen
-1. 25-50 layer für alle netze, für max. schmidt rank auf 64 samples
-evlt noch 50-200 layer
-2. Fig3. auf 4 Qbutis aus Sharma et al. reproduzieren
-##Ideen:
-- weight intilization ändern
-- mehr Circuits testen
-- Dynamic Learning Rate 
+The code for generating and running experiments can be found in <code>generate_experiments.py</code>
 
-## To do:
-- Test different qnns
-- Test different learning rates
-- Test different termination conditions (max steps, low cost,...)
-- 2 qubit unitary expirement on real quantum computer
-- Heatmap for 2 variable parameters (all others fixed) and loss as heatmap value
+The parameter configurations for different experiments can be found in <code>config.py</code>, where e.g. <code>get_exp_one_qubit_unitary_config</code> refers to the experimental setup for single-qubit unitary experiment.
 
-## Experiments
-- Reproduce Figure 2 and Figure 3:
-  - Fig. 2: 1 qubit, 10 unitaries and 10 training sets with entangled/unentangled states
-  - Fig. 3: 6 qubits, 10 unitaries, each trained on 100 training sets with the same Schmidt rank $r = 2^0,\dots, 2^6$
-- Training sets with non-uniform Schmidt rank
+To run the single-qubit unitary and the 4-qubit unitary experiments, simply call <code>test_fig2()</code> and <code>test_fig3()</code> to generate the results.
+
+## Dependencies
+
+This repository uses python 3.10, pennylane, torch and qiskit, the specific versions can be found in <code>pyproject.toml</code>
